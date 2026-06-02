@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // Single-family app. Lock everything to the one known family tree so a
+    // signed-in client can't create stray family docs or read another family's
+    // data. Auth is anonymous, so this is the realistic ceiling — the PINs are
+    // a light in-app gate, not a server-enforced boundary.
+    match /families/eaker {
+      allow read, write: if signedIn();
+      match /{document=**} {
+        allow read, write: if signedIn();
+      }
+    }
+  }
+}
