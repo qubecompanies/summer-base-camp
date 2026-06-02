@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
 import { tierById, itemValue } from '../config/sports'
+import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
 
@@ -25,8 +26,8 @@ export default function SportCard({ sport, playerId, data, onOpenDrills, onProof
           <div className="qtitle">{sport.name}{meet && <span className="meetchip">🏁 meet</span>}</div>
           <div className="qcat">
             {status === 'open'
-              ? `base +${sport.min} min · +${sport.pts} pts`
-              : `${tierById(tier)?.label || 'Medium'} · +${val.min} min · +${val.pts} pts`}
+              ? `base +${fmtMins(sport.min)} · +${sport.pts} pts`
+              : `${tierById(tier)?.label || 'Medium'} · +${fmtMins(val.min)} · +${val.pts} pts`}
           </div>
           {drill && <div className="qpick">drill: {drill}</div>}
         </div>

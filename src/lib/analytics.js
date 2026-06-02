@@ -114,6 +114,27 @@ export function buildBadges(historyByDate, ref = new Date()) {
     (a, s) => a + Object.values(s?.quests || {}).filter((q) => isVerified(q.status)).length,
     0,
   )
-  const ctx = { verifiedDayCount, totalVerified, streak: computeStreak(historyByDate, ref) }
+  // Total verified points across the whole window.
+  const totalPoints = days.reduce((a, s) => a + dayPoints(s), 0)
+  // Distinct days with at least one verified quest.
+  const activeDays = days.filter((s) => dayActive(s)).length
+  // Verified chore-type entries: the `chore` quest plus any quick-logged custom
+  // item tagged with the "Chore" category (see App.onLogTask → addCustom cat).
+  const choreCount = days.reduce((a, s) => {
+    const quests = (s && s.quests) || {}
+    return a + Object.entries(quests).filter(([qid, q]) => {
+      if (!isVerified(q.status)) return false
+      if (qid === 'chore') return true
+      return isCustom(q) && q.custom?.cat === 'Chore'
+    }).length
+  }, 0)
+  const ctx = {
+    verifiedDayCount,
+    totalVerified,
+    totalPoints,
+    activeDays,
+    choreCount,
+    streak: computeStreak(historyByDate, ref),
+  }
   return BADGES.map((b) => ({ ...b, got: Boolean(b.check(ctx)) }))
 }

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { PLAYERS, ALL_QUESTS, resolveQuest } from '../config/quests'
 import { SPORTS, itemValue, tierById, isCustom } from '../config/sports'
+import { fmtMins } from '../lib/format'
 import Avatar from './Avatar'
 
 export default function ParentPanel({
@@ -34,7 +35,8 @@ export default function ParentPanel({
     Object.entries(state[p.id]?.quests || {}).forEach(([id, qs]) => {
       if (isCustom(qs) && qs.status === 'claimed') {
         const v = itemValue(id, qs)
-        pending.push({ player: p, id, title: qs.custom.title, cat: 'Custom', min: v.min, pts: v.pts, proofUrl: qs.proofUrl })
+        const cat = qs.custom.cat ? `${qs.custom.glyph || ''} ${qs.custom.cat}`.trim() : 'Custom'
+        pending.push({ player: p, id, title: qs.custom.title, cat, min: v.min, pts: v.pts, proofUrl: qs.proofUrl })
       }
     })
   })
@@ -66,7 +68,7 @@ export default function ParentPanel({
               <b style={{ fontFamily: 'Bricolage Grotesque' }}>{p.name}</b>
             </div>
             <div className="pbars">
-              <div>📺 <b>{s.bank}</b>m left</div>
+              <div>📺 <b>{fmtMins(s.bank)}</b> left</div>
               <div>⭐ <b>{s.pts}</b></div>
               <div>🔥 <b>{derived?.[p.id]?.streak ?? 0}</b></div>
               <div>📅 <b>{weekTotal(p)}</b>/wk</div>
@@ -84,13 +86,13 @@ export default function ParentPanel({
           return (
             <div className="slrow" key={p.id}>
               <div className="slname">{p.avatar} {p.name}
-                <small>{s.bank}m left · {s.spent}m used of {s.min}m earned</small>
+                <small>{fmtMins(s.bank)} left · {fmtMins(s.spent)} used of {fmtMins(s.min)} earned</small>
               </div>
               <div className="slbtns">
                 {[15, 30, 60].map((m) => (
-                  <button key={m} className="slbtn" onClick={() => onLogScreen(p.id, m)}>+{m}</button>
+                  <button key={m} className="slbtn" onClick={() => onLogScreen(p.id, m)}>+{fmtMins(m)}</button>
                 ))}
-                <button className="slbtn undo" onClick={() => onLogScreen(p.id, -15)}>↩15</button>
+                <button className="slbtn undo" onClick={() => onLogScreen(p.id, -15)}>↩15m</button>
               </div>
             </div>
           )
@@ -108,7 +110,7 @@ export default function ParentPanel({
             <div className="approw" key={k}>
               <div className="ai">
                 {title}
-                <small>{player.name} · {cat} · +{min}m +{pts}pts</small>
+                <small>{player.name} · {cat} · +{fmtMins(min)} +{pts}pts</small>
                 {proofUrl && (
                   <div className="proofview"><img src={proofUrl} alt="proof" /><span style={{ fontSize: 10, color: 'var(--teal)' }}>photo attached</span></div>
                 )}

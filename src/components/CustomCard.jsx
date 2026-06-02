@@ -1,17 +1,20 @@
 import React, { useRef } from 'react'
+import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
 
 // A one-off custom activity (kid- or parent-created). Value lives inline on
 // the entry's `custom` field; lifecycle mirrors a normal quest.
 const fmt = (n) => `${n >= 0 ? '+' : '−'}${Math.abs(n)}`
+const fmtMinSigned = (n) => `${n >= 0 ? '+' : ''}${fmtMins(n)}`
 
 export default function CustomCard({ playerId, id, data, onProof, onRemove }) {
   const status = data?.status || 'open'
-  const { title, min, pts, locked } = data?.custom || {}
+  const { title, min, pts, locked, cat, glyph } = data?.custom || {}
   const proofUrl = data?.proofUrl
   const note = data?.note
   const fileRef = useRef(null)
+  const catLabel = locked ? 'Parent adjustment' : (cat ? `${cat} · quick log` : 'Custom · your own quest')
 
   const handleFile = (e) => {
     const f = e.target.files?.[0]
@@ -24,15 +27,15 @@ export default function CustomCard({ playerId, id, data, onProof, onRemove }) {
       <div className="qcheck">{isVerified(status) ? '✓' : status === 'claimed' ? '…' : ''}</div>
 
       <div className="qtop">
-        <div className="qmark" style={{ background: 'var(--purple)' }}>✎</div>
+        <div className="qmark" style={{ background: cat ? 'var(--teal)' : 'var(--purple)' }}>{glyph || '✎'}</div>
         <div>
           <div className="qtitle">{title}</div>
-          <div className="qcat">{locked ? 'Parent adjustment' : 'Custom · your own quest'}</div>
+          <div className="qcat">{catLabel}</div>
         </div>
       </div>
 
       <div className="qrewards">
-        <span className="rw min">{fmt(min)} min screen</span>
+        <span className="rw min">{fmtMinSigned(min)} screen</span>
         <span className="rw pt">{fmt(pts)} pts</span>
       </div>
 

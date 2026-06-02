@@ -181,10 +181,12 @@ export function useFamilyState() {
 
   // One-off custom activity. Kid-created needs sign-off (claimed); a parent
   // creating it for a boy auto-counts (approved). Value rides inline (no def).
-  const addCustom = useCallback((playerId, { title, min, pts, byParent, locked } = {}) => {
+  const addCustom = useCallback((playerId, { title, min, pts, byParent, locked, cat, glyph } = {}) => {
     const id = `c_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     const custom = { title: (title || 'Custom activity').trim(), min: Number(min) || 0, pts: Number(pts) || 0 }
     if (locked) custom.locked = true // parent bonus/docking — kids can't delete it
+    if (cat) custom.cat = cat        // e.g. 'Chore' / 'Quick win' for quick-logged tasks
+    if (glyph) custom.glyph = glyph  // card icon for the category
     return writeQuest(playerId, id, { status: byParent ? 'approved' : 'claimed', custom })
   }, [writeQuest])
 

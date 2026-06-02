@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { resolveQuest } from '../config/quests'
+import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
 
@@ -50,7 +51,7 @@ export default function QuestCard({ quest, playerId, mode, data, onClaim, onReve
       </div>
 
       <div className="qrewards">
-        <span className="rw min">+{q.min} min screen</span>
+        <span className="rw min">+{fmtMins(q.min)} screen</span>
         <span className="rw pt">+{q.pts} pts</span>
       </div>
 

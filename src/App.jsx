@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth, FIREBASE_READY } from './firebase'
 import { PLAYERS, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
+import { fmtMins } from './lib/format'
 import { sportsByPlayer, isCustom } from './config/sports'
 import { useFamilyState } from './hooks/useFamilyState'
 import { useDeviceIdentity } from './hooks/useDeviceIdentity'
@@ -22,6 +23,7 @@ import Avatar from './components/Avatar'
 import BrothersView from './components/BrothersView'
 import AwardSheet from './components/AwardSheet'
 import QuestSheet from './components/QuestSheet'
+import QuickLogSheet from './components/QuickLogSheet'
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(!FIREBASE_READY)
@@ -37,6 +39,7 @@ export default function App() {
   const [showPins, setShowPins] = useState(false)
   const [showAward, setShowAward] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
+  const [showQuickLog, setShowQuickLog] = useState(false)
   const [toast, setToast] = useState({ msg: '', show: false })
 
   const { demo, loading, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
@@ -68,7 +71,7 @@ export default function App() {
   const onSignOff = (p, q, note) => { actions.signOff(p, q, note); flash('✅ Approved') }
   const onReset = () => { actions.resetToday(); flash('✅ Fresh day — quests reset') }
   const onLogSport = (p, id, opts) => { actions.logSport(p, id, opts); flash('🟡 Practice logged · add proof or get a sign-off') }
-  const onLogScreen = (p, m) => { actions.logScreen(p, m); flash(m > 0 ? `📺 Logged ${m} min used` : '↩ Refunded 15 min') }
+  const onLogScreen = (p, m) => { actions.logScreen(p, m); flash(m > 0 ? `📺 Logged ${fmtMins(m)} used` : '↩ Refunded 15m') }
   const onSetLadder = (next) => { actions.setLadder(next); flash('✅ Reward ladder updated') }
   const onSetPin = (id, pin) => { actions.setPin(id, pin); flash('🔑 PIN updated') }
   const onSetAvatar = async (id, file) => { await actions.setAvatar(id, file); flash('📷 Photo updated') }
@@ -86,6 +89,11 @@ export default function App() {
   }
   // A boy turned an "I'm bored" idea into a claim — small default reward.
   const onLogIdea = (idea) => { actions.addCustom(cur, { title: idea, min: 15, pts: 8 }); flash('🟡 Logged · get a sign-off to count it') }
+  // Quick-log a canned chore / quick-win for the current boy (claimed → sign-off).
+  const onLogTask = (item, kind) => {
+    actions.addCustom(cur, { title: item.title, min: item.min, pts: item.pts, cat: kind, glyph: item.glyph })
+    flash(`${item.glyph} Logged · get a sign-off to count it`)
+  }
   const onRemoveCustom = (p, id) => { actions.deleteQuest(p, id); flash('🗑 Removed') }
 
   // ---- auth + identity gate ----
@@ -158,8 +166,8 @@ export default function App() {
       <div className="hud">
         <div className="stat screen">
           <div className="lab">◇ Screen bank</div>
-          <div className="val">{c.bank}</div><div className="sicon">📺</div>
-          <div className="sub">min left{c.spent > 0 ? ` · ${c.spent} used` : ''}</div>
+          <div className="val">{fmtMins(c.bank)}</div><div className="sicon">📺</div>
+          <div className="sub">screen time left{c.spent > 0 ? ` · ${fmtMins(c.spent)} used` : ''}</div>
         </div>
         <div className="stat pts">
           <div className="lab">◆ Points</div>
@@ -286,20 +294,35 @@ export default function App() {
             {customEntries.map(([id, q]) => (
               <CustomCard key={id} playerId={cur} id={id} data={q} onProof={onProof} onRemove={onRemoveCustom} />
             ))}
+            <button className="addcustom quick" onClick={() => setShowQuickLog(true)}>🧹 Log a chore / quick win</button>
             <button className="addcustom" onClick={() => setShowCustom(true)}>＋ Add your own quest</button>
           </div>
 
           <div className="shead" style={{ marginTop: 18 }}>
             <h2>Badges</h2><span className="cnt">collect 'em</span><span className="ln" />
           </div>
-          <div className="badges">
-            {d.badges.map((b) => (
-              <div key={b.n} className={`bg ${b.got ? 'earned' : 'locked'}`} title={b.tip}>
-                <div className="ring">{b.e}</div>
-                <div className="bn">{b.n}</div>
+          {[
+            { tier: 'short', label: '⚡ Quick wins' },
+            { tier: 'medium', label: '📈 Keep it up' },
+            { tier: 'long', label: '🎯 Big goals' },
+          ].map(({ tier, label }) => {
+            const group = d.badges.filter((b) => (b.tier || 'short') === tier)
+            if (!group.length) return null
+            const got = group.filter((b) => b.got).length
+            return (
+              <div key={tier} className="badgegroup">
+                <div className="bglabel">{label} <span>{got}/{group.length}</span></div>
+                <div className="badges">
+                  {group.map((b) => (
+                    <div key={b.n} className={`bg ${b.got ? 'earned' : 'locked'}`} title={b.tip}>
+                      <div className="ring">{b.e}</div>
+                      <div className="bn">{b.n}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })}
           {d.badges.every((b) => !b.got) && (
             <div className="emptyhint">🔒 No badges yet — verify a few quests and they'll start unlocking.</div>
           )}
@@ -344,6 +367,10 @@ export default function App() {
 
       {showQuests && (
         <QuestSheet questDefs={questDefs} onSave={onSaveQuestDef} onClose={() => setShowQuests(false)} />
+      )}
+
+      {showQuickLog && (
+        <QuickLogSheet onLog={onLogTask} onClose={() => setShowQuickLog(false)} />
       )}
 
       <div className={`toast${toast.show ? ' show' : ''}`} dangerouslySetInnerHTML={{ __html: toast.msg }} />
