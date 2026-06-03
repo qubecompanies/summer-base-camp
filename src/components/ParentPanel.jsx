@@ -11,38 +11,79 @@ export default function ParentPanel({
 }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const [notes, setNotes] = useState({})
+  const [showCounted, setShowCounted] = useState(false)
+  const [showManage, setShowManage] = useState(false)
   const fileRefs = useRef({})
   const pickPhoto = (pid) => fileRefs.current[pid]?.click()
   const onFile = (pid, e) => { const f = e.target.files?.[0]; if (f) onSetAvatar?.(pid, f); e.target.value = '' }
+  // Show items the boys have submitted: 'claimed' still needs a sign-off to
+  // count; 'proof' (photo or description) already counts but the parent can
+  // still review, read the boy's note, and revert if it needs a redo.
+  const needsReview = (st) => st === 'claimed' || st === 'proof'
   const pending = []
   PLAYERS.forEach((p) => {
     ALL_QUESTS.forEach((q0) => {
       const qs = state[p.id]?.quests?.[q0.id]
-      if (qs?.status === 'claimed') {
+      if (needsReview(qs?.status)) {
         const q = resolveQuest(q0, p.id)
-        pending.push({ player: p, id: q0.id, title: q.title, cat: q.cat, min: q.min, pts: q.pts, proofUrl: qs.proofUrl })
+        pending.push({ player: p, id: q0.id, title: q.title, cat: q.cat, min: q.min, pts: q.pts, proofUrl: qs.proofUrl, desc: qs.desc, status: qs.status })
       }
     })
     SPORTS.filter((s) => s.owners.includes(p.id)).forEach((s) => {
       const qs = state[p.id]?.quests?.[s.id]
-      if (qs?.status === 'claimed') {
+      if (needsReview(qs?.status)) {
         const v = itemValue(s.id, qs)
         const cat = `Sport · ${tierById(qs.tier)?.label || 'Medium'}${qs.meet ? ' · 🏁 meet' : ''}${qs.drill ? ` · ${qs.drill}` : ''}`
-        pending.push({ player: p, id: s.id, title: s.name, cat, min: v.min, pts: v.pts, proofUrl: qs.proofUrl })
+        pending.push({ player: p, id: s.id, title: s.name, cat, min: v.min, pts: v.pts, proofUrl: qs.proofUrl, desc: qs.desc, status: qs.status })
       }
     })
     // Custom kid-created activities awaiting sign-off.
     Object.entries(state[p.id]?.quests || {}).forEach(([id, qs]) => {
-      if (isCustom(qs) && qs.status === 'claimed') {
+      if (isCustom(qs) && needsReview(qs.status)) {
         const v = itemValue(id, qs)
         const cat = qs.custom.cat ? `${qs.custom.glyph || ''} ${qs.custom.cat}`.trim() : 'Custom'
-        pending.push({ player: p, id, title: qs.custom.title, cat, min: v.min, pts: v.pts, proofUrl: qs.proofUrl })
+        pending.push({ player: p, id, title: qs.custom.title, cat, min: v.min, pts: v.pts, proofUrl: qs.proofUrl, desc: qs.desc, status: qs.status })
       }
     })
   })
 
   const weekTotal = (p) => Object.values(derived?.[p.id]?.weekPoints || {}).reduce((a, b) => a + b, 0)
   const badgeCount = (p) => (derived?.[p.id]?.badges || []).filter((b) => b.got).length
+
+  // Split the queue: 'claimed' still needs the parent's call; 'proof' already
+  // counts (photo/desc) and is here only for an optional read-through.
+  const needsSignoff = pending.filter((x) => x.status === 'claimed')
+  const counted = pending.filter((x) => x.status === 'proof')
+
+  // One row renderer for both groups so the markup stays DRY.
+  const renderRow = ({ player, id, title, cat, min, pts, proofUrl, desc, status }) => {
+    const k = player.id + id
+    const note = notes[k] || ''
+    const clearNote = () => setNotes((n) => ({ ...n, [k]: '' }))
+    const counts = status === 'proof'
+    return (
+      <div className={`approw${counts ? ' counts' : ''}`} key={k}>
+        <div className="ai">
+          {title}
+          <small>{player.name} · {cat} · +{fmtMins(min)} +{pts}pts</small>
+          {desc && <div className="apdesc">📝 “{desc}”</div>}
+          {proofUrl && (
+            <div className="proofview"><img src={proofUrl} alt="proof" /><span style={{ fontSize: 10, color: 'var(--teal)' }}>photo attached</span></div>
+          )}
+          <input
+            className="notein"
+            placeholder="Add a note (optional) — e.g. great job! / redo, add detail"
+            value={note}
+            onChange={(e) => setNotes((n) => ({ ...n, [k]: e.target.value }))}
+          />
+        </div>
+        <div className="acts">
+          {!counts && <button className="ok" onClick={() => { onSignOff(player.id, id, note.trim()); clearNote() }}>✓ Sign off</button>}
+          <button className="no" onClick={() => { onRevert(player.id, id, note.trim()); clearNote() }}>{counts ? '↩ Send back' : '↩ Back'}</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="parentpanel">
@@ -100,35 +141,20 @@ export default function ParentPanel({
       </div>
 
       <div className="signoff">
-        <div className="sh">⏳ Waiting on your sign-off</div>
-        {pending.length === 0 && <div className="nopend">Nothing waiting — all caught up.</div>}
-        {pending.map(({ player, id, title, cat, min, pts, proofUrl }) => {
-          const k = player.id + id
-          const note = notes[k] || ''
-          const clearNote = () => setNotes((n) => ({ ...n, [k]: '' }))
-          return (
-            <div className="approw" key={k}>
-              <div className="ai">
-                {title}
-                <small>{player.name} · {cat} · +{fmtMins(min)} +{pts}pts</small>
-                {proofUrl && (
-                  <div className="proofview"><img src={proofUrl} alt="proof" /><span style={{ fontSize: 10, color: 'var(--teal)' }}>photo attached</span></div>
-                )}
-                <input
-                  className="notein"
-                  placeholder="Add a note (optional) — e.g. great job! / redo, add detail"
-                  value={note}
-                  onChange={(e) => setNotes((n) => ({ ...n, [k]: e.target.value }))}
-                />
-              </div>
-              <div className="acts">
-                <button className="ok" onClick={() => { onSignOff(player.id, id, note.trim()); clearNote() }}>✓ Sign off</button>
-                <button className="no" onClick={() => { onRevert(player.id, id, note.trim()); clearNote() }}>↩ Back</button>
-              </div>
-            </div>
-          )
-        })}
+        <div className="sh">✍️ Needs your sign-off {needsSignoff.length > 0 && <span className="shcount">{needsSignoff.length}</span>}</div>
+        {needsSignoff.length === 0 && <div className="nopend">Nothing waiting — all caught up. 🎉</div>}
+        {needsSignoff.map(renderRow)}
       </div>
+
+      {counted.length > 0 && (
+        <div className="counted">
+          <button className="discbtn" onClick={() => setShowCounted((v) => !v)}>
+            <span>✓ Already counted today <span className="shcount on">{counted.length}</span> · review optional</span>
+            <span className="discchev">{showCounted ? '▾' : '▸'}</span>
+          </button>
+          {showCounted && <div className="discbody">{counted.map(renderRow)}</div>}
+        </div>
+      )}
 
       {milestones.some((m) => teamPoints >= m.pts) && (
         <div className="redeembox">
@@ -150,25 +176,35 @@ export default function ParentPanel({
         </div>
       )}
 
-      <div className="parenttools">
-        <button className="ptool" onClick={onOpenAssign}>✎ Assign an activity</button>
-        <button className="ptool" onClick={onOpenQuests}>✏️ Edit quest board</button>
-        <button className="ptool" onClick={onOpenLadder}>🏁 Edit reward ladder</button>
-        <button className="ptool" onClick={onOpenAward}>🎁 Bonus / docking</button>
-        <button className="ptool" onClick={onOpenPins}>🔑 Change PINs</button>
-      </div>
+      <div className="manage">
+        <button className="discbtn" onClick={() => setShowManage((v) => !v)}>
+          <span>⚙️ Manage &amp; settings</span>
+          <span className="discchev">{showManage ? '▾' : '▸'}</span>
+        </button>
+        {showManage && (
+          <div className="discbody">
+            <div className="parenttools">
+              <button className="ptool" onClick={onOpenAssign}>✎ Assign an activity</button>
+              <button className="ptool" onClick={onOpenQuests}>✏️ Edit quest board</button>
+              <button className="ptool" onClick={onOpenLadder}>🏁 Edit reward ladder</button>
+              <button className="ptool" onClick={onOpenAward}>🎁 Bonus / docking</button>
+              <button className="ptool" onClick={onOpenPins}>🔑 Change PINs</button>
+            </div>
 
-      {confirmReset ? (
-        <div className="resetconfirm">
-          <span>Wipe today's progress for both boys?</span>
-          <div className="rcacts">
-            <button className="rcyes" onClick={() => { onReset(); setConfirmReset(false) }}>Yes, reset</button>
-            <button className="rcno" onClick={() => setConfirmReset(false)}>Cancel</button>
+            {confirmReset ? (
+              <div className="resetconfirm">
+                <span>Wipe today's progress for both boys?</span>
+                <div className="rcacts">
+                  <button className="rcyes" onClick={() => { onReset(); setConfirmReset(false) }}>Yes, reset</button>
+                  <button className="rcno" onClick={() => setConfirmReset(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button className="resetbtn" onClick={() => setConfirmReset(true)}>↺ Reset today (start fresh)</button>
+            )}
           </div>
-        </div>
-      ) : (
-        <button className="resetbtn" onClick={() => setConfirmReset(true)}>↺ Reset today (start fresh)</button>
-      )}
+        )}
+      </div>
     </div>
   )
 }

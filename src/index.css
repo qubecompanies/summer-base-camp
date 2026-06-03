@@ -191,6 +191,17 @@ body{
 .nopend{font-size:11.5px;color:var(--ink-soft);font-style:italic;}
 .proofview{display:flex;align-items:center;gap:8px;margin-top:4px;}
 .proofview img{width:38px;height:38px;border-radius:7px;object-fit:cover;border:1px solid var(--line);}
+/* Already-counting submissions (photo/desc) read teal + solid; sign-off-only stay amber + dashed. */
+.approw.counts{background:#eafbf6;border-style:solid;border-color:var(--teal);}
+.apdesc{margin-top:6px;background:#eef4ff;border:1px solid var(--blue);border-radius:9px;padding:6px 9px;font-size:11.5px;font-weight:600;font-style:italic;color:var(--ink);line-height:1.35;}
+/* sign-off section header count chip */
+.shcount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--amber);color:#fff;font-size:10.5px;font-weight:800;vertical-align:middle;}
+.shcount.on{background:var(--teal);}
+/* collapsible disclosure (already-counted queue + manage area) */
+.counted,.manage{margin-top:9px;}
+.discbtn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--cream);border:1.5px solid var(--line);border-radius:11px;padding:9px 11px;font-family:'Outfit';font-weight:700;font-size:12px;color:var(--ink-soft);cursor:pointer;}
+.discbtn .discchev{font-size:11px;color:var(--ink-soft);}
+.discbody{margin-top:8px;}
 .resetbtn{margin-top:13px;width:100%;border:1.5px solid var(--line);background:var(--cream);border-radius:11px;padding:9px;font-family:'Outfit';font-weight:600;font-size:12.5px;color:var(--ink-soft);cursor:pointer;}
 
 /* Two-step Reset confirm */
