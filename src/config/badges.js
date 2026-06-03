@@ -30,6 +30,7 @@ export const BADGES = [
   { e: '🎖', n: 'JROTC Grind',  tier: 'medium', tip: 'JROTC practice on 6 days',  check: (c) => c.verifiedDayCount('jrotc') >= 6 },
   { e: '💛', n: 'Kind Heart',   tier: 'medium', tip: 'Kindness on 5 days',        check: (c) => c.verifiedDayCount('kind') >= 5 },
   { e: '🎵', n: 'Music Maker',  tier: 'medium', tip: 'Music practice on 5 days',  check: (c) => c.verifiedDayCount('music') >= 5 },
+  { e: '🏡', n: 'Family First', tier: 'medium', tip: 'Family time on 5 days',     check: (c) => c.verifiedDayCount('family') >= 5 },
   { e: '🏆', n: 'No-Zero Week', tier: 'medium', tip: '5-weekday streak',          check: (c) => c.streak >= 5 },
 
   // ---- long-term: the big season goals ----
