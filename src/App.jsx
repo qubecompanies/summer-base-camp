@@ -66,7 +66,8 @@ export default function App() {
   // wrap actions to fire toasts
   const onClaim = (p, q) => { actions.claim(p, q); flash('🟡 Claimed · add proof or get a sign-off') }
   const onRevert = (p, q, note) => { actions.revert(p, q, note); if (note) flash('↩ Sent back with a note') }
-  const onProof = async (p, q, file) => { await actions.addProof(p, q, file); flash('✅ 📎 Photo proof in — counts now!') }
+  const onProof = async (p, q, file, desc) => { await actions.addProof(p, q, file, desc); flash('✅ 📎 Photo proof in — counts now!') }
+  const onDesc = async (p, q, desc) => { await actions.addDesc(p, q, desc); flash('✅ 📝 Description in — counts now!') }
   const onPick = (p, q, pick) => actions.setPick(p, q, pick)
   const onSignOff = (p, q, note) => { actions.signOff(p, q, note); flash('✅ Approved') }
   const onReset = () => { actions.resetToday(); flash('✅ Fresh day — quests reset') }
@@ -258,7 +259,7 @@ export default function App() {
           {c.done === 0 && c.pend === 0 && (
             <div className="emptyhint">
               👋 New here? Tap a card to <b>claim</b> a quest. It counts toward your screen bank once you
-              <b> add a photo</b> or a parent <b>signs off</b>.
+              <b> add a photo or a description</b>, or a parent <b>signs off</b>.
             </div>
           )}
           <div className="grid">
@@ -266,7 +267,7 @@ export default function App() {
               <QuestCard
                 key={q.id} quest={q} playerId={cur} mode={mode}
                 data={state[cur]?.quests?.[q.id]}
-                onClaim={onClaim} onRevert={onRevert} onProof={onProof} onPick={onPick}
+                onClaim={onClaim} onRevert={onRevert} onProof={onProof} onDesc={onDesc} onPick={onPick}
               />
             ))}
           </div>
@@ -280,7 +281,7 @@ export default function App() {
               <SportCard
                 key={s.id} sport={s} playerId={cur}
                 data={state[cur]?.quests?.[s.id]}
-                onOpenDrills={setDrillFor} onProof={onProof} onRevert={onRevert}
+                onOpenDrills={setDrillFor} onProof={onProof} onDesc={onDesc} onRevert={onRevert}
               />
             ))}
           </div>
@@ -292,7 +293,7 @@ export default function App() {
           <BoredomBox playerId={cur} onLogIdea={onLogIdea} />
           <div className="grid" style={{ marginTop: 9 }}>
             {customEntries.map(([id, q]) => (
-              <CustomCard key={id} playerId={cur} id={id} data={q} onProof={onProof} onRemove={onRemoveCustom} />
+              <CustomCard key={id} playerId={cur} id={id} data={q} onProof={onProof} onDesc={onDesc} onRemove={onRemoveCustom} />
             ))}
             <button className="addcustom quick" onClick={() => setShowQuickLog(true)}>🧹 Log a chore / quick win</button>
             <button className="addcustom" onClick={() => setShowCustom(true)}>＋ Add your own quest</button>
@@ -313,12 +314,25 @@ export default function App() {
               <div key={tier} className="badgegroup">
                 <div className="bglabel">{label} <span>{got}/{group.length}</span></div>
                 <div className="badges">
-                  {group.map((b) => (
-                    <div key={b.n} className={`bg ${b.got ? 'earned' : 'locked'}`} title={b.tip}>
-                      <div className="ring">{b.e}</div>
-                      <div className="bn">{b.n}</div>
-                    </div>
-                  ))}
+                  {group.map((b) => {
+                    const cur = Math.min(b.cur ?? 0, b.goal)
+                    const pct = Math.round((cur / b.goal) * 100)
+                    return (
+                      <div key={b.n} className={`bg ${b.got ? 'earned' : 'locked'}`}>
+                        <div className="ring">{b.e}</div>
+                        <div className="binfo">
+                          <div className="bn">{b.n}</div>
+                          <div className="btip">{b.got ? '✓ earned!' : b.tip}</div>
+                          {!b.got && (
+                            <div className="bprog">
+                              <div className="bbar"><span style={{ width: `${pct}%` }} /></div>
+                              <span className="bnum">{cur}/{b.goal}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )

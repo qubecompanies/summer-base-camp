@@ -1,20 +1,23 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { tierById, itemValue } from '../config/sports'
 import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
 
-export default function SportCard({ sport, playerId, data, onOpenDrills, onProof, onRevert }) {
+export default function SportCard({ sport, playerId, data, onOpenDrills, onProof, onDesc, onRevert }) {
   const status = data?.status || 'open'
   const { tier, drill, meet, note } = data || {}
+  const savedDesc = data?.desc
   const val = itemValue(sport.id, data || {})
   const fileRef = useRef(null)
+  const [desc, setDesc] = useState(savedDesc || '')
 
   const handleFile = (e) => {
     const f = e.target.files?.[0]
-    if (f) onProof(playerId, sport.id, f)
+    if (f) onProof(playerId, sport.id, f, desc)
     e.target.value = ''
   }
+  const stop = (e) => e.stopPropagation()
 
   return (
     <div className={`quest sport ${status}`}>
@@ -33,7 +36,19 @@ export default function SportCard({ sport, playerId, data, onOpenDrills, onProof
         </div>
       </div>
 
+      {savedDesc && status !== 'claimed' && <div className="qdesc">📝 “{savedDesc}”</div>}
+
       {note && <div className={`qnote${status === 'approved' ? ' ok' : ''}`}>💬 {note}</div>}
+
+      {status === 'claimed' && (
+        <div className="proofpanel" onClick={stop}>
+          <textarea className="descin" rows={2} value={desc}
+                    placeholder="Tell us what you did (counts as proof)…"
+                    onChange={(e) => setDesc(e.target.value)} />
+          <button className="qbtn proof submit" disabled={!desc.trim()}
+                  onClick={() => onDesc(playerId, sport.id, desc)}>✓ Submit description</button>
+        </div>
+      )}
 
       <div className="qfoot">
         {status === 'open' && (

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
@@ -8,17 +8,19 @@ const isVerified = (s) => s === 'proof' || s === 'approved'
 const fmt = (n) => `${n >= 0 ? '+' : '−'}${Math.abs(n)}`
 const fmtMinSigned = (n) => `${n >= 0 ? '+' : ''}${fmtMins(n)}`
 
-export default function CustomCard({ playerId, id, data, onProof, onRemove }) {
+export default function CustomCard({ playerId, id, data, onProof, onDesc, onRemove }) {
   const status = data?.status || 'open'
   const { title, min, pts, locked, cat, glyph } = data?.custom || {}
   const proofUrl = data?.proofUrl
+  const savedDesc = data?.desc
   const note = data?.note
   const fileRef = useRef(null)
+  const [desc, setDesc] = useState(savedDesc || '')
   const catLabel = locked ? 'Parent adjustment' : (cat ? `${cat} · quick log` : 'Custom · your own quest')
 
   const handleFile = (e) => {
     const f = e.target.files?.[0]
-    if (f) onProof(playerId, id, f)
+    if (f) onProof(playerId, id, f, desc)
     e.target.value = ''
   }
 
@@ -43,7 +45,19 @@ export default function CustomCard({ playerId, id, data, onProof, onRemove }) {
         <div className="proofthumb"><img src={proofUrl} alt="proof" /><span>photo attached ✓</span></div>
       )}
 
+      {savedDesc && status !== 'claimed' && <div className="qdesc">📝 “{savedDesc}”</div>}
+
       {note && <div className={`qnote${status === 'approved' ? ' ok' : ''}`}>💬 {note}</div>}
+
+      {status === 'claimed' && (
+        <div className="proofpanel">
+          <textarea className="descin" rows={2} value={desc}
+                    placeholder="Tell us what you did (counts as proof)…"
+                    onChange={(e) => setDesc(e.target.value)} />
+          <button className="qbtn proof submit" disabled={!desc.trim()}
+                  onClick={() => onDesc(playerId, id, desc)}>✓ Submit description</button>
+        </div>
+      )}
 
       <div className="qfoot">
         {status === 'claimed' && (

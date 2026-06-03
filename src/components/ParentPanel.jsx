@@ -48,7 +48,7 @@ export default function ParentPanel({
     <div className="parentpanel">
       <h3>👀 Parent check-in</h3>
       <div className="psub">
-        Boys claim their own quests. Minutes + points only count once there's <b>photo proof</b> or your <b>sign-off</b>.
+        Boys claim their own quests. Minutes + points only count once there's a <b>photo</b>, a <b>description</b>, or your <b>sign-off</b>.
       </div>
 
       {PLAYERS.map((p) => {

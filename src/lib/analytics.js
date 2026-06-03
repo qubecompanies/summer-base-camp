@@ -136,5 +136,8 @@ export function buildBadges(historyByDate, ref = new Date()) {
     choreCount,
     streak: computeStreak(historyByDate, ref),
   }
-  return BADGES.map((b) => ({ ...b, got: Boolean(b.check(ctx)) }))
+  return BADGES.map((b) => {
+    const cur = Math.max(0, Math.round(b.prog(ctx)))
+    return { ...b, cur, got: cur >= b.goal }
+  })
 }

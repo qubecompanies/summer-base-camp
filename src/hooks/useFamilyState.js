@@ -171,7 +171,14 @@ export function useFamilyState() {
   const claim = useCallback((playerId, questId) => writeQuest(playerId, questId, { status: 'claimed' }), [writeQuest])
   // Optional `note` lets a parent leave a short comment on bounce/sign-off.
   // Defaults to '' so a kid un-claiming their own card clears any stale note.
-  const revert = useCallback((playerId, questId, note = '') => writeQuest(playerId, questId, { status: 'open', proofUrl: '', note }), [writeQuest])
+  const revert = useCallback((playerId, questId, note = '') => writeQuest(playerId, questId, { status: 'open', proofUrl: '', desc: '', note }), [writeQuest])
+  // Kid-written description of what they did. Counts as proof on its own (status
+  // 'proof'), just like a photo — the parent still reviews/can bounce it.
+  const addDesc = useCallback((playerId, questId, desc = '') => {
+    const text = (desc || '').trim()
+    if (!text) return
+    return writeQuest(playerId, questId, { status: 'proof', desc: text })
+  }, [writeQuest])
   const signOff = useCallback((playerId, questId, note = '') => writeQuest(playerId, questId, { status: 'approved', note }), [writeQuest])
   const setPick = useCallback((playerId, questId, pick) => writeQuest(playerId, questId, { pick }), [writeQuest])
   // Log a sport practice: claim it with effort tier + optional drill/meet flag.
@@ -282,16 +289,19 @@ export function useFamilyState() {
     }
   }, [demo, date])
 
-  const addProof = useCallback(async (playerId, questId, file) => {
+  // Photo proof. An optional `desc` (what the boy typed) is saved alongside the
+  // photo so a description and a picture can travel together.
+  const addProof = useCallback(async (playerId, questId, file, desc = '') => {
+    const extra = (desc || '').trim() ? { desc: desc.trim() } : {}
     if (demo) {
       const url = URL.createObjectURL(file)
-      return writeQuest(playerId, questId, { status: 'proof', proofUrl: url })
+      return writeQuest(playerId, questId, { status: 'proof', proofUrl: url, ...extra })
     }
     const path = `proofs/${FAMILY_ID}/${date}/${playerId}_${questId}_${Date.now()}`
     const r = storageRef(storage, path)
     await uploadBytes(r, file)
     const url = await getDownloadURL(r)
-    return writeQuest(playerId, questId, { status: 'proof', proofUrl: url })
+    return writeQuest(playerId, questId, { status: 'proof', proofUrl: url, ...extra })
   }, [demo, writeQuest, date])
 
   const resetToday = useCallback(async () => {
@@ -337,6 +347,6 @@ export function useFamilyState() {
 
   return {
     date, demo, loading, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,
-    actions: { claim, revert, signOff, setPick, addProof, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef },
+    actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef },
   }
 }

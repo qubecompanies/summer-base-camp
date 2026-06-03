@@ -4,14 +4,16 @@ import { fmtMins } from '../lib/format'
 
 const isVerified = (s) => s === 'proof' || s === 'approved'
 
-export default function QuestCard({ quest, playerId, mode, data, onClaim, onRevert, onProof, onPick }) {
+export default function QuestCard({ quest, playerId, mode, data, onClaim, onRevert, onProof, onDesc, onPick }) {
   const q = resolveQuest(quest, playerId)
   const status = data?.status || 'open'
   const pick = data?.pick
   const proofUrl = data?.proofUrl
+  const savedDesc = data?.desc
   const note = data?.note
   const [showIdeas, setShowIdeas] = useState(false)
   const [justDone, setJustDone] = useState(false)
+  const [desc, setDesc] = useState(savedDesc || '')
   const fileRef = useRef(null)
 
   const cardClick = () => {
@@ -26,7 +28,7 @@ export default function QuestCard({ quest, playerId, mode, data, onClaim, onReve
 
   const handleFile = (e) => {
     const f = e.target.files?.[0]
-    if (f) onProof(playerId, q.id, f)
+    if (f) onProof(playerId, q.id, f, desc)
     e.target.value = ''
   }
 
@@ -62,7 +64,19 @@ export default function QuestCard({ quest, playerId, mode, data, onClaim, onReve
         </div>
       )}
 
+      {savedDesc && status !== 'claimed' && <div className="qdesc" onClick={stop}>📝 “{savedDesc}”</div>}
+
       {note && <div className={`qnote${status === 'approved' ? ' ok' : ''}`} onClick={stop}>💬 {note}</div>}
+
+      {status === 'claimed' && (
+        <div className="proofpanel" onClick={stop}>
+          <textarea className="descin" rows={2} value={desc}
+                    placeholder="Tell us what you did (counts as proof)…"
+                    onChange={(e) => setDesc(e.target.value)} />
+          <button className="qbtn proof submit" disabled={!desc.trim()}
+                  onClick={() => onDesc(playerId, q.id, desc)}>✓ Submit description</button>
+        </div>
+      )}
 
       <div className="qfoot" onClick={stop}>
         {status === 'open' && (
