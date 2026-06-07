@@ -57,7 +57,22 @@ function pointsFor(playerState) {
 }
 
 export function useFamilyState() {
-  const date = todayKey()
+  // The active day. Captured on mount, but re-checked whenever the app regains
+  // focus so a device left open overnight rolls to the new day instead of being
+  // stuck subscribed to yesterday's (empty) docs.
+  const [date, setDate] = useState(todayKey())
+  useEffect(() => {
+    const sync = () => { const k = todayKey(); setDate((d) => (d === k ? d : k)) }
+    window.addEventListener('focus', sync)
+    document.addEventListener('visibilitychange', sync)
+    const t = setInterval(sync, 60 * 1000)
+    return () => {
+      window.removeEventListener('focus', sync)
+      document.removeEventListener('visibilitychange', sync)
+      clearInterval(t)
+    }
+  }, [])
+  const [loadError, setLoadError] = useState(null)
   const [teamPoints, setTeamPoints] = useState(0)
   const [teamGoal, setTeamGoalState] = useState(TEAM_GOAL)
   const [milestones, setMilestonesState] = useState(MILESTONES)
@@ -89,8 +104,11 @@ export function useFamilyState() {
     const familyRef = doc(db, 'families', FAMILY_ID)
     setDoc(familyRef, { teamGoal: TEAM_GOAL }, { merge: true }).catch(() => {})
 
+    const onErr = (e) => { console.error('firestore read failed', e); setLoadError(e); setLoading(false) }
+
     const unsubs = []
     unsubs.push(onSnapshot(familyRef, (snap) => {
+      setLoadError(null)
       const d = snap.data() || {}
       setTeamPoints(d.teamPoints || 0)
       if (typeof d.teamGoal === 'number') setTeamGoalState(d.teamGoal)
@@ -104,7 +122,7 @@ export function useFamilyState() {
       const defs = d.questDefs && typeof d.questDefs === 'object' ? d.questDefs : {}
       setQuestOverrides(defs)
       setQuestDefsState(defs)
-    }))
+    }, onErr))
 
     PLAYERS.forEach((p) => {
       const sRef = doc(db, 'families', FAMILY_ID, 'state', `${p.id}_${date}`)
@@ -112,7 +130,7 @@ export function useFamilyState() {
         const d = snap.data() || { quests: {} }
         setState((prev) => ({ ...prev, [p.id]: { quests: d.quests || {}, spent: d.spent || 0 } }))
         setLoading(false)
-      }))
+      }, onErr))
     })
 
     // Past days don't change, so fetch them once (no live listeners needed).
@@ -346,7 +364,7 @@ export function useFamilyState() {
   }, [history, state, date])
 
   return {
-    date, demo, loading, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,
+    date, demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,
     actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef },
   }
 }

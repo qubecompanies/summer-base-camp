@@ -234,6 +234,19 @@ body{
 .modal-bg{position:fixed;inset:0;background:rgba(34,40,47,.45);display:grid;place-items:center;z-index:60;padding:24px;}
 .demo-banner{background:#fff3da;border:1.5px dashed var(--amber);border-radius:13px;padding:9px 13px;font-size:11px;color:#8a5a00;font-weight:600;margin-bottom:12px;text-align:center;}
 .loading{min-height:100vh;display:grid;place-items:center;font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink-soft);}
+/* Full-screen connect error (auth/data couldn't load) */
+.loaderr{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--cream);}
+.lecard{max-width:380px;width:100%;background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06);}
+.leicon{font-size:34px;}
+.lecard h2{font-family:'Bricolage Grotesque';font-size:20px;margin:6px 0 4px;color:var(--ink);}
+.lecard p{font-size:13px;color:var(--ink-soft);margin:0 0 12px;line-height:1.45;}
+.letips{text-align:left;font-size:12px;color:var(--ink-soft);margin:0 0 14px;padding-left:18px;line-height:1.5;}
+.letips li{margin-bottom:4px;}
+.lebtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:11px;padding:11px;font-family:'Outfit';font-weight:700;font-size:14px;cursor:pointer;}
+.lecode{margin-top:10px;font-size:10.5px;color:var(--ink-soft);font-family:monospace;}
+/* Non-blocking "stale data" banner */
+.loadbanner{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff4e0;border:1.5px solid var(--amber);color:var(--ink);font-size:12px;font-weight:600;padding:8px 12px;border-radius:11px;margin:8px 10px 0;}
+.loadbanner button{background:var(--amber);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:'Outfit';font-weight:700;font-size:11.5px;cursor:pointer;}
 
 /* Profile setup ("whose device is this?") */
 .card.setup{max-width:340px;}

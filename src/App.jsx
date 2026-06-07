@@ -27,6 +27,8 @@ import QuickLogSheet from './components/QuickLogSheet'
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(!FIREBASE_READY)
+  const [authError, setAuthError] = useState(null)
+  const [authTry, setAuthTry] = useState(0)
   const [cur, setCur] = useState('everett')
   const [view, setView] = useState('today')
   const [mode, setMode] = useState('weekday')
@@ -42,15 +44,26 @@ export default function App() {
   const [showQuickLog, setShowQuickLog] = useState(false)
   const [toast, setToast] = useState({ msg: '', show: false })
 
-  const { demo, loading, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
+  const { demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
   const { profile: deviceProfile, bound, bind, unbind } = useDeviceIdentity()
   const isParentDevice = deviceProfile?.role === 'parent'
 
+  // Anonymous sign-in. Critical: we only mark the app "ready" once we actually
+  // have a signed-in user — otherwise Firestore reads are denied and the board
+  // renders all-zeros with no clue why. A failed sign-in now surfaces a visible,
+  // retryable error instead of a silent empty board.
   useEffect(() => {
     if (!FIREBASE_READY) return
-    signInAnonymously(auth).catch((e) => console.error('anonymous sign-in failed', e))
-    return onAuthStateChanged(auth, () => setAuthChecked(true))
-  }, [])
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) { setAuthError(null); setAuthChecked(true) }
+    })
+    signInAnonymously(auth).catch((e) => {
+      console.error('anonymous sign-in failed', e)
+      setAuthError(e)
+      setAuthChecked(true) // stop the infinite "Loading…" so the error can show
+    })
+    return unsub
+  }, [authTry])
 
   // A kid-owned device opens straight to that boy's board.
   useEffect(() => {
@@ -98,6 +111,33 @@ export default function App() {
   const onRemoveCustom = (p, id) => { actions.deleteQuest(p, id); flash('🗑 Removed') }
 
   // ---- auth + identity gate ----
+  if (FIREBASE_READY && authError) {
+    const code = authError?.code || ''
+    const offline = code.includes('network') || (typeof navigator !== 'undefined' && navigator.onLine === false)
+    return (
+      <div className="loaderr">
+        <div className="lecard">
+          <div className="leicon">⚠️</div>
+          <h2>Couldn’t connect</h2>
+          <p>
+            {offline
+              ? 'Looks like this device is offline. Check your Wi-Fi or cellular signal, then try again.'
+              : 'We couldn’t sign in on this device, so the camp data can’t load.'}
+          </p>
+          <ul className="letips">
+            <li>Make sure you’re not in a <b>Private / Incognito</b> tab.</li>
+            <li>Open in <b>Safari or Chrome directly</b> (not from inside another app).</li>
+            <li>Turn off any <b>ad/content blocker</b> or iCloud <b>Private Relay</b> for this site.</li>
+            <li>On iPhone: Settings → Safari → make sure <b>Block All Cookies</b> is off.</li>
+          </ul>
+          <button className="lebtn" onClick={() => { setAuthError(null); setAuthChecked(false); setAuthTry((n) => n + 1) }}>
+            ↻ Try again
+          </button>
+          {code && <div className="lecode">Error: {code}</div>}
+        </div>
+      </div>
+    )
+  }
   if (!authChecked) return <div className="loading">Loading…</div>
   if (!bound) return <ProfileSetup onBind={bind} pins={pins} />
 
@@ -118,6 +158,12 @@ export default function App() {
 
   return (
     <div className={`wrap app ${view} ${mode}${parent ? ' parent' : ''}`}>
+      {loadError && (
+        <div className="loadbanner">
+          ⚠️ Couldn’t load the latest data — showing what we have.
+          <button onClick={() => window.location.reload()}>↻ Refresh</button>
+        </div>
+      )}
       {/* top bar */}
       <div className="topbar">
         <div className="brand">
