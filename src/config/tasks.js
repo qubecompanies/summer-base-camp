@@ -33,6 +33,7 @@ export const QUICK_WINS = [
   { id: 'stretch', title: '5-minute stretch', glyph: '🤸', min: 5, pts: 3 },
   { id: 'tidy5', title: '5-minute room tidy', glyph: '🧸', min: 5, pts: 4 },
   { id: 'compliment', title: 'Give someone a compliment', glyph: '🌟', min: 5, pts: 4 },
+  { id: 'call_family', title: 'Call a grandparent / relative', glyph: '📞', min: 10, pts: 6 },
   { id: 'plan', title: 'Plan your day / make a list', glyph: '📝', min: 8, pts: 5 },
   { id: 'verse', title: 'Memorize a verse', glyph: '✦', min: 10, pts: 8 },
   { id: 'screencheck', title: 'Put your device away on time', glyph: '⏰', min: 8, pts: 6 },
