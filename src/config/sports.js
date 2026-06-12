@@ -1,5 +1,5 @@
 import { questById } from './quests'
-import { activeSports } from './activeFamily'
+import { activeSports, activeScreenRate } from './activeFamily'
 
 // Effort tiers multiply a sport's base points + minutes.
 export const TIERS = [
@@ -62,7 +62,9 @@ export const defById = (id) => questById(id) || sportById(id)
 export const isCustom = (data) => Boolean(data && data.custom)
 
 // Tier-aware value for any item: custom activities use their embedded reward,
-// quests are always 1x, sports scale by their chosen effort tier.
+// quests are always 1x, sports scale by their chosen effort tier. The family's
+// screen-time generosity multiplier scales earned MINUTES (not points), and not
+// one-off custom items (those carry exact, intended values).
 export function itemValue(id, data) {
   if (isCustom(data)) {
     const { min = 0, pts = 0 } = data.custom
@@ -71,5 +73,6 @@ export function itemValue(id, data) {
   const def = defById(id)
   if (!def) return { min: 0, pts: 0 }
   const m = isSport(id) ? tierMult(data?.tier) : 1
-  return { min: Math.round(def.min * m), pts: Math.round(def.pts * m) }
+  const rate = activeScreenRate()
+  return { min: Math.round(def.min * m * rate), pts: Math.round(def.pts * m) }
 }

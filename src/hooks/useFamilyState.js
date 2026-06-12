@@ -293,6 +293,14 @@ export function useFamilyState() {
     await setDoc(doc(db, 'families', FID), { sports: list, updatedAt: serverTimestamp() }, { merge: true })
   }, [demo, FID])
 
+  // Parent sets the screen-time generosity multiplier (minutes earned per
+  // activity). Clamped to a sane range. Stored on the family doc.
+  const setScreenRate = useCallback(async (rate) => {
+    const r = Math.min(3, Math.max(0.25, Number(rate) || 1))
+    if (demo) return
+    await setDoc(doc(db, 'families', FID), { screenRate: r, updatedAt: serverTimestamp() }, { merge: true })
+  }, [demo, FID])
+
   // Parent marks a reached milestone as cashed-in (or undoes it). Stored as an
   // array of milestone point-thresholds on the family doc.
   const redeemMilestone = useCallback(async (pts) => {
@@ -379,6 +387,6 @@ export function useFamilyState() {
 
   return {
     date, demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,
-    actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef, setSports },
+    actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef, setSports, setScreenRate },
   }
 }

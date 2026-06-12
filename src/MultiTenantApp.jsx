@@ -46,6 +46,7 @@ export default function MultiTenantApp() {
     kids: family.family?.kids || [],
     pins: family.family?.pins || {},
     sports: family.family?.sports || [],
+    screenRate: typeof family.family?.screenRate === 'number' ? family.family.screenRate : 1,
   })
   return <App key={family.familyId} onSignOut={signOut} />
 }

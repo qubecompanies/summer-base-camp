@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth, FIREBASE_READY, MULTI_TENANT } from './firebase'
 import { getPlayers, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
-import { hasActiveFamily } from './config/activeFamily'
+import { hasActiveFamily, activeScreenRate } from './config/activeFamily'
 import { fmtMins } from './lib/format'
 import { sportsByPlayer, getSports, isCustom } from './config/sports'
 import { useFamilyState } from './hooks/useFamilyState'
@@ -26,6 +26,8 @@ import AwardSheet from './components/AwardSheet'
 import QuestSheet from './components/QuestSheet'
 import QuickLogSheet from './components/QuickLogSheet'
 import SportsSheet from './components/SportsSheet'
+import RewardSheet from './components/RewardSheet'
+import Walkthrough from './components/Walkthrough'
 
 export default function App({ onSignOut } = {}) {
   // Under multi-tenant, the shell already established the family session, so the
@@ -47,6 +49,8 @@ export default function App({ onSignOut } = {}) {
   const [showQuests, setShowQuests] = useState(false)
   const [showQuickLog, setShowQuickLog] = useState(false)
   const [showSports, setShowSports] = useState(false)
+  const [showRewards, setShowRewards] = useState(false)
+  const [showTour, setShowTour] = useState(false)
   const [toast, setToast] = useState({ msg: '', show: false })
 
   const { demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
@@ -77,6 +81,15 @@ export default function App({ onSignOut } = {}) {
     if (deviceProfile?.role === 'kid') setCur(deviceProfile.id)
   }, [deviceProfile])
 
+  // First-run: auto-open the walkthrough once on a parent device. Replayable
+  // anytime from Manage → App walkthrough.
+  useEffect(() => {
+    if (deviceProfile?.role !== 'parent') return
+    let seen = false
+    try { seen = Boolean(localStorage.getItem('sbc_tour_seen')) } catch (_) {}
+    if (!seen) setShowTour(true)
+  }, [deviceProfile])
+
   const flash = useCallback((msg) => {
     setToast({ msg, show: true })
     clearTimeout(window._sbc_t)
@@ -104,6 +117,8 @@ export default function App({ onSignOut } = {}) {
   }
   const onSaveQuestDef = (qid, patch) => actions.setQuestDef(qid, patch)
   const onSaveSports = (sports) => { actions.setSports(sports); flash('🎯 Sports updated') }
+  const onSaveRate = (rate) => { actions.setScreenRate(rate); flash('📺 Screen-time rate updated') }
+  const closeTour = () => { setShowTour(false); try { localStorage.setItem('sbc_tour_seen', '1') } catch (_) {} }
   // Add a custom activity to one or more boys (kid → claim, parent → auto-count).
   const onAddCustom = ({ title, min, pts, targets, byParent }) => {
     targets.forEach((pid) => actions.addCustom(pid, { title, min, pts, byParent }))
@@ -296,6 +311,8 @@ export default function App({ onSignOut } = {}) {
               onOpenAward={() => setShowAward(true)}
               onOpenQuests={() => setShowQuests(true)}
               onOpenSports={hasActiveFamily() ? () => setShowSports(true) : undefined}
+              onOpenRewards={hasActiveFamily() ? () => setShowRewards(true) : undefined}
+              onOpenTour={() => setShowTour(true)}
             />
           )}
 
@@ -459,6 +476,23 @@ export default function App({ onSignOut } = {}) {
       {showSports && (
         <SportsSheet sports={getSports()} kids={PLAYERS} onSave={onSaveSports} onClose={() => setShowSports(false)} />
       )}
+
+      {showRewards && (
+        <RewardSheet
+          screenRate={activeScreenRate()} onSaveRate={onSaveRate} kids={PLAYERS}
+          teamPoints={teamPoints} teamGoal={teamGoal} milestones={milestones}
+          recentPerKid={(() => {
+            const rates = PLAYERS.map((p) => {
+              const wk = (derived[p.id]?.weeks || []).filter((w) => w.total > 0)
+              return wk.length ? (wk.reduce((a, w) => a + w.total, 0) / wk.length) / 7 : 0
+            }).filter((r) => r > 0)
+            return rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0
+          })()}
+          onClose={() => setShowRewards(false)}
+        />
+      )}
+
+      {showTour && <Walkthrough onClose={closeTour} />}
 
       <div className={`toast${toast.show ? ' show' : ''}`} dangerouslySetInnerHTML={{ __html: toast.msg }} />
     </div>
