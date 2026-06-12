@@ -352,13 +352,20 @@ body{
 .rplan.d3{border-color:var(--amber);background:#fff8ea;}
 .rplan.d4{border-color:var(--amber);background:#fff4e0;}
 .rplan.d5{border-color:var(--coral);background:#fff0ec;}
+.rplan.d6{border-color:var(--coral);background:#ffe9e2;}
 .rplanbig{display:flex;align-items:baseline;gap:7px;}
 .rplannum{font-family:'Bricolage Grotesque';font-weight:800;font-size:40px;line-height:1;color:var(--ink);}
 .rplanunit{font-size:11px;font-weight:700;color:var(--ink-soft);line-height:1.2;}
 .rplanside{display:flex;flex-direction:column;gap:6px;}
 .rbadge{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:999px;background:#fff;border:1.5px solid var(--blue);color:var(--blue);width:fit-content;}
 .rbadge.d3,.rbadge.d4{border-color:var(--amber);color:#9a6a00;}
-.rbadge.d5{border-color:var(--coral);color:var(--coral);}
+.rbadge.d5,.rbadge.d6{border-color:var(--coral);color:var(--coral);}
+/* 0–10 activities/day scale */
+.rscale{margin:2px 0 10px;}
+.rscaletrack{position:relative;height:10px;border-radius:6px;background:linear-gradient(90deg,#cfe6ff,#ffe6a8,#ffc9bb);}
+.rscalefill{position:absolute;left:0;top:0;height:100%;border-radius:6px 0 0 6px;background:rgba(0,0,0,.04);}
+.rscalemark{position:absolute;top:-3px;width:4px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-2px);box-shadow:0 0 0 2px #fff;}
+.rscalelabels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-soft);font-weight:600;margin-top:3px;}
 .rplanmeta{font-size:11px;color:var(--ink-soft);font-weight:600;}
 .rplansentence{font-size:13px;color:var(--ink);line-height:1.5;margin:6px 0;}
 .rtips{display:flex;flex-direction:column;gap:6px;margin:8px 0;}

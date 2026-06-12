@@ -10,14 +10,16 @@ import { fmtMins } from '../lib/format'
 //     do?" No history assumed; the parent tunes kids, weeks, and reward size.
 const COMFORT = 3 // a sustainable ~activities/day per kid, used as a reference
 
-// Difficulty read for a required activities/day figure. Icon + word so it reads
-// without relying on color (deuteranopia-safe).
+// Difficulty read for a required activities/day figure, across a 0–10 scale.
+// Icon + word so it reads without relying on color (deuteranopia-safe).
+const SCALE_MAX = 10
 function difficulty(a) {
   if (a <= 1.5) return { icon: '✓', word: 'Easygoing', cls: 'd1' }
   if (a <= 3) return { icon: '◐', word: 'Very doable', cls: 'd2' }
   if (a <= 4.5) return { icon: '▲', word: 'Busy', cls: 'd3' }
   if (a <= 6) return { icon: '▲', word: 'Ambitious', cls: 'd4' }
-  return { icon: '⚠', word: 'Very demanding', cls: 'd5' }
+  if (a <= 8) return { icon: '⚠', word: 'Very demanding', cls: 'd5' }
+  return { icon: '⛔', word: 'Unrealistic', cls: 'd6' }
 }
 
 export default function RewardSheet({
@@ -97,13 +99,22 @@ export default function RewardSheet({
           {/* The headline answer */}
           <div className={`rplan ${diff.cls}`}>
             <div className="rplanbig">
-              <span className="rplannum">{actsPerDayPerKid.toFixed(1)}</span>
+              <span className="rplannum">{actsPerDayPerKid >= SCALE_MAX ? `${SCALE_MAX}+` : actsPerDayPerKid.toFixed(1)}</span>
               <span className="rplanunit">activities<br />per day, each</span>
             </div>
             <div className="rplanside">
               <div className={`rbadge ${diff.cls}`}>{diff.icon} {diff.word}</div>
               <div className="rplanmeta">≈ {Math.round(ptsPerDayPerKid)} pts/day each · {Math.round(dailyTeam)} team pts/day</div>
             </div>
+          </div>
+
+          {/* 0–10 activities/day scale */}
+          <div className="rscale">
+            <div className="rscaletrack">
+              <span className="rscalefill" style={{ width: `${Math.min(actsPerDayPerKid, SCALE_MAX) / SCALE_MAX * 100}%` }} />
+              <span className="rscalemark" style={{ left: `${Math.min(actsPerDayPerKid, SCALE_MAX) / SCALE_MAX * 100}%` }} />
+            </div>
+            <div className="rscalelabels"><span>0</span><span>easy</span><span>5</span><span>a lot</span><span>10/day</span></div>
           </div>
 
           <p className="rplansentence">
@@ -115,7 +126,7 @@ export default function RewardSheet({
           {/* Guidance */}
           <div className="rtips">
             <div className="rtip">🧭 At a relaxed <b>~{COMFORT} activities/day</b> each, this reward takes about <b>{weeksAtComfort} week{weeksAtComfort === 1 ? '' : 's'}</b>.</div>
-            {actsPerDayPerKid > 4.5 && (
+            {actsPerDayPerKid > 6 && (
               <div className="rtip warn">⚠ That’s a lot to keep up. To make it easier: give it more weeks, or set the goal nearer <b>{comfyGoal} pts</b> for this timeframe.</div>
             )}
             {actsPerDayPerKid < 1 && (
