@@ -248,6 +248,38 @@ body{
 .loadbanner{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff4e0;border:1.5px solid var(--amber);color:var(--ink);font-size:12px;font-weight:600;padding:8px 12px;border-radius:11px;margin:8px 10px 0;}
 .loadbanner button{background:var(--amber);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:'Outfit';font-weight:700;font-size:11.5px;cursor:pointer;}
 
+/* ===== Multi-tenant sign-in (Phase 1, flag-gated) ===== */
+.signin,.mtshell{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--cream);}
+.sicard,.mtcard{max-width:380px;width:100%;background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:24px 22px;box-shadow:0 8px 30px rgba(0,0,0,.06);}
+.sibrand{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.sibrand h1{font-family:'Bricolage Grotesque';font-size:20px;margin:0;color:var(--ink);}
+.sibrand p{font-size:12.5px;color:var(--ink-soft);margin:2px 0 0;}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:11px;padding:11px;font-family:'Outfit';font-weight:700;font-size:14px;cursor:pointer;}
+.gbtn:hover{background:var(--cream);}
+.gbtn .gmark{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;font-size:13px;}
+.sidiv{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--ink-soft);font-size:11px;}
+.sidiv::before,.sidiv::after{content:'';flex:1;height:1px;background:var(--line);}
+.siform{display:flex;flex-direction:column;gap:11px;}
+.sifield{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+.sifield input{border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;font-family:'Outfit';font-size:14px;color:var(--ink);font-weight:500;}
+.sifield input:focus{outline:none;border-color:var(--blue);}
+.simsg{font-size:12px;font-weight:600;border-radius:9px;padding:8px 10px;line-height:1.35;}
+.simsg.err{background:#fff0ec;border:1px solid var(--coral);color:var(--ink);}
+.simsg.ok{background:#eafbf6;border:1px solid var(--teal);color:var(--ink);}
+.sibtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:11px;padding:12px;font-family:'Outfit';font-weight:700;font-size:14px;cursor:pointer;}
+.sibtn:disabled{opacity:.6;cursor:default;}
+.sibtn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);margin-top:14px;}
+.silinks{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+.silinks button{background:none;border:none;color:var(--blue);font-family:'Outfit';font-weight:600;font-size:12.5px;text-align:left;cursor:pointer;padding:0;}
+.sifoot{font-size:11px;color:var(--ink-soft);text-align:center;margin:16px 0 0;line-height:1.4;}
+.mtcard{text-align:center;}
+.mtcard h2{font-family:'Bricolage Grotesque';font-size:20px;margin:8px 0 2px;color:var(--ink);}
+.mtwho{font-size:13px;color:var(--ink-soft);margin:0 0 12px;font-weight:600;}
+.mtstatus{font-size:13px;color:var(--ink);line-height:1.5;margin:10px 0;}
+.mtstatus small{color:var(--ink-soft);font-size:11px;}
+.mtstatus.ok{color:var(--teal);font-weight:700;}
+.mtstatus.err{color:var(--coral);font-weight:700;}
+
 /* Profile setup ("whose device is this?") */
 .card.setup{max-width:340px;}
 .profilepicks{display:flex;flex-direction:column;gap:10px;}
