@@ -283,6 +283,16 @@ export function useFamilyState() {
     await setDoc(doc(db, 'families', FID), { questDefs: { [questId]: patch } }, { merge: true })
   }, [demo, questDefs])
 
+  // Parent sets the family's sports list (multi-tenant). Stored on the family
+  // doc; the active-family registry picks it up on the next snapshot so the
+  // board + points engine reflect the change. Each sport:
+  //   { id, name, glyph, color, owners:[kidId], min, pts, drills:[], meetFlag? }
+  const setSports = useCallback(async (sports) => {
+    const list = Array.isArray(sports) ? sports : []
+    if (demo) return
+    await setDoc(doc(db, 'families', FID), { sports: list, updatedAt: serverTimestamp() }, { merge: true })
+  }, [demo, FID])
+
   // Parent marks a reached milestone as cashed-in (or undoes it). Stored as an
   // array of milestone point-thresholds on the family doc.
   const redeemMilestone = useCallback(async (pts) => {
@@ -369,6 +379,6 @@ export function useFamilyState() {
 
   return {
     date, demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,
-    actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef },
+    actions: { claim, revert, signOff, setPick, addProof, addDesc, resetToday, logSport, addCustom, logScreen, setLadder, deleteQuest, setPin, setAvatar, redeemMilestone, setQuestDef, setSports },
   }
 }

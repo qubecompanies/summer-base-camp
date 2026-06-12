@@ -4,7 +4,7 @@ import { auth, FIREBASE_READY, MULTI_TENANT } from './firebase'
 import { getPlayers, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
 import { hasActiveFamily } from './config/activeFamily'
 import { fmtMins } from './lib/format'
-import { sportsByPlayer, isCustom } from './config/sports'
+import { sportsByPlayer, getSports, isCustom } from './config/sports'
 import { useFamilyState } from './hooks/useFamilyState'
 import { useDeviceIdentity } from './hooks/useDeviceIdentity'
 import QuestCard from './components/QuestCard'
@@ -25,6 +25,7 @@ import BrothersView from './components/BrothersView'
 import AwardSheet from './components/AwardSheet'
 import QuestSheet from './components/QuestSheet'
 import QuickLogSheet from './components/QuickLogSheet'
+import SportsSheet from './components/SportsSheet'
 
 export default function App({ onSignOut } = {}) {
   // Under multi-tenant, the shell already established the family session, so the
@@ -45,6 +46,7 @@ export default function App({ onSignOut } = {}) {
   const [showAward, setShowAward] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
   const [showQuickLog, setShowQuickLog] = useState(false)
+  const [showSports, setShowSports] = useState(false)
   const [toast, setToast] = useState({ msg: '', show: false })
 
   const { demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
@@ -101,6 +103,7 @@ export default function App({ onSignOut } = {}) {
     flash(min + pts >= 0 ? '🎁 Bonus applied' : '⚠ Adjustment applied')
   }
   const onSaveQuestDef = (qid, patch) => actions.setQuestDef(qid, patch)
+  const onSaveSports = (sports) => { actions.setSports(sports); flash('🎯 Sports updated') }
   // Add a custom activity to one or more boys (kid → claim, parent → auto-count).
   const onAddCustom = ({ title, min, pts, targets, byParent }) => {
     targets.forEach((pid) => actions.addCustom(pid, { title, min, pts, byParent }))
@@ -292,6 +295,7 @@ export default function App({ onSignOut } = {}) {
               onOpenPins={() => setShowPins(true)}
               onOpenAward={() => setShowAward(true)}
               onOpenQuests={() => setShowQuests(true)}
+              onOpenSports={hasActiveFamily() ? () => setShowSports(true) : undefined}
             />
           )}
 
@@ -450,6 +454,10 @@ export default function App({ onSignOut } = {}) {
 
       {showQuickLog && (
         <QuickLogSheet onLog={onLogTask} onClose={() => setShowQuickLog(false)} />
+      )}
+
+      {showSports && (
+        <SportsSheet sports={getSports()} kids={PLAYERS} onSave={onSaveSports} onClose={() => setShowSports(false)} />
       )}
 
       <div className={`toast${toast.show ? ' show' : ''}`} dangerouslySetInnerHTML={{ __html: toast.msg }} />

@@ -1,4 +1,5 @@
 import { questById } from './quests'
+import { activeSports } from './activeFamily'
 
 // Effort tiers multiply a sport's base points + minutes.
 export const TIERS = [
@@ -9,8 +10,9 @@ export const TIERS = [
 export const tierById = (id) => TIERS.find((t) => t.id === id)
 export const tierMult = (id) => tierById(id)?.mult ?? 1
 
-// Sports per boy. Colors are deuteranopia-safe; each also carries a distinct
-// glyph so it reads without color. `meetFlag` adds a "this was a meet" toggle.
+// Default sports (the Eaker family / single-family path). Colors are
+// deuteranopia-safe; each also carries a distinct glyph so it reads without
+// color. `meetFlag` adds a "this was a meet" toggle.
 export const SPORTS = [
   { id: 'bball', name: 'Basketball', glyph: '🏀', color: 'var(--amber)', owners: ['everett', 'parker'], min: 30, pts: 16,
     drills: ['Shooting form · 50 makes', 'Ball-handling ladder', 'Defensive slides', 'Free throws · make 20', '3-on-3 / pickup', 'Conditioning sprints'] },
@@ -21,8 +23,35 @@ export const SPORTS = [
   { id: 'swim', name: 'Swim', glyph: '🏊', color: 'var(--blue)', owners: ['parker'], min: 45, pts: 22, meetFlag: true,
     drills: ['Freestyle sets', 'Kick sets', 'Pull / technique', 'IM mix', 'Sprint 50s', 'Distance endurance'] },
 ]
-export const sportsByPlayer = (playerId) => SPORTS.filter((s) => s.owners.includes(playerId))
-export const sportById = (id) => SPORTS.find((s) => s.id === id)
+
+// Standard sports catalog — what a family can pick from when setting up their
+// own sports. Each carries sensible default min/pts + starter drills, all
+// editable after they're added. Distinct glyphs so they read without color.
+export const STANDARD_SPORTS = [
+  { key: 'bball', name: 'Basketball', glyph: '🏀', min: 30, pts: 16, drills: ['Shooting · 50 makes', 'Ball-handling ladder', 'Defensive slides', 'Free throws · make 20', 'Pickup / scrimmage', 'Conditioning sprints'] },
+  { key: 'soccer', name: 'Soccer', glyph: '⚽', min: 35, pts: 18, drills: ['Dribbling course', 'Passing wall · 100 touches', 'Shooting on goal', 'Juggling reps', 'Sprints / agility', 'Scrimmage'] },
+  { key: 'baseball', name: 'Baseball / Softball', glyph: '⚾', min: 35, pts: 18, drills: ['Batting tee / cage', 'Fielding grounders', 'Throwing long toss', 'Base-running', 'Pitching / bullpen', 'Catch + footwork'] },
+  { key: 'football', name: 'Football', glyph: '🏈', min: 40, pts: 20, drills: ['Route running', 'Footwork ladder', 'Catching reps', 'Conditioning', 'Film / playbook', 'Strength work'] },
+  { key: 'swim', name: 'Swim', glyph: '🏊', min: 45, pts: 22, meetFlag: true, drills: ['Freestyle sets', 'Kick sets', 'Pull / technique', 'IM mix', 'Sprint 50s', 'Distance endurance'] },
+  { key: 'volleyball', name: 'Volleyball', glyph: '🏐', min: 35, pts: 18, drills: ['Passing / bumping', 'Setting reps', 'Serving · make 20', 'Hitting approach', 'Blocking footwork', 'Scrimmage'] },
+  { key: 'tennis', name: 'Tennis', glyph: '🎾', min: 35, pts: 18, drills: ['Forehand rally', 'Backhand rally', 'Serve · make 25', 'Volleys at net', 'Footwork drills', 'Match play'] },
+  { key: 'track', name: 'Track / Running', glyph: '🏃', min: 35, pts: 18, meetFlag: true, drills: ['Easy distance run', 'Interval sprints', 'Hill repeats', 'Form drills', 'Tempo run', 'Cooldown + stretch'] },
+  { key: 'lift', name: 'Weightlifting', glyph: '🏋', min: 35, pts: 18, drills: ['Upper body', 'Lower body / legs', 'Push day', 'Pull day', 'Full-body circuit', 'Core + mobility'] },
+  { key: 'martial', name: 'Martial Arts', glyph: '🥋', min: 40, pts: 20, drills: ['Forms / katas', 'Sparring', 'Technique drills', 'Conditioning', 'Flexibility', 'Belt requirements'] },
+  { key: 'gymnastics', name: 'Gymnastics', glyph: '🤸', min: 40, pts: 20, meetFlag: true, drills: ['Conditioning', 'Floor routine', 'Balance / beam', 'Bars / strength', 'Flexibility', 'Vault / tumbling'] },
+  { key: 'dance', name: 'Dance', glyph: '🩰', min: 35, pts: 18, drills: ['Technique class', 'Choreography', 'Stretch / flexibility', 'Across-the-floor', 'Routine run-through', 'Strength / core'] },
+  { key: 'golf', name: 'Golf', glyph: '⛳', min: 35, pts: 16, drills: ['Driving range', 'Putting · 30 min', 'Chipping / short game', 'Bunker practice', 'Play 9 holes', 'Swing video review'] },
+  { key: 'cycling', name: 'Cycling', glyph: '🚴', min: 40, pts: 18, drills: ['Endurance ride', 'Hill intervals', 'Sprints', 'Skills / handling', 'Recovery spin', 'Strength / core'] },
+  { key: 'climbing', name: 'Climbing', glyph: '🧗', min: 35, pts: 18, drills: ['Bouldering problems', 'Top-rope routes', 'Grip / hangboard', 'Footwork drills', 'Endurance laps', 'Stretch / mobility'] },
+  { key: 'wrestling', name: 'Wrestling', glyph: '🤼', min: 40, pts: 20, meetFlag: true, drills: ['Takedown drills', 'Live wrestling', 'Conditioning', 'Technique / film', 'Strength', 'Weight management'] },
+]
+
+// Active sports: the family's configured sports when running multi-tenant, else
+// the default SPORTS (single-family / flag-off path).
+export const getSports = () => activeSports(SPORTS)
+
+export const sportsByPlayer = (playerId) => getSports().filter((s) => (s.owners || []).includes(playerId))
+export const sportById = (id) => getSports().find((s) => s.id === id)
 export const isSport = (id) => Boolean(sportById(id))
 
 // Unified lookup over quests + sports, used by the points engine.

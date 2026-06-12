@@ -294,6 +294,38 @@ body{
 .topactions{display:flex;align-items:center;gap:8px;}
 .signoutbtn{flex:none;width:34px;height:34px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:15px;color:var(--ink-soft);cursor:pointer;}
 .signoutbtn:hover{border-color:var(--coral);color:var(--coral);}
+/* Sports manager sheet */
+.sportsheet{max-width:480px;width:100%;text-align:left;max-height:88vh;overflow-y:auto;}
+.sportsheet h2{text-align:center;}
+.sportsheet>p{font-size:12px;color:var(--ink-soft);line-height:1.45;}
+.spslist{display:flex;flex-direction:column;gap:10px;margin:6px 0;}
+.spsempty{font-size:12.5px;color:var(--ink-soft);font-style:italic;text-align:center;padding:8px;}
+.spscard{border:1.5px solid var(--line);border-left-width:5px;border-radius:12px;padding:10px;background:#fff;}
+.spshead{display:flex;align-items:center;gap:7px;}
+.spsglyph{flex:none;width:46px;border:1.5px solid var(--line);border-radius:9px;padding:7px 4px;font-size:17px;text-align:center;background:#fff;cursor:pointer;}
+.spsname{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;font-family:'Outfit';font-weight:700;font-size:14px;color:var(--ink);}
+.spsx{flex:none;width:30px;height:30px;border:none;border-radius:8px;background:#fff0ec;color:var(--coral);font-weight:800;cursor:pointer;}
+.spsowners{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0;}
+.spslab{font-size:11px;font-weight:700;color:var(--ink-soft);}
+.spschip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-family:'Outfit';font-weight:600;font-size:12px;color:var(--ink-soft);cursor:pointer;}
+.spschip.on{border-color:var(--blue);background:#eef4ff;color:var(--ink);}
+.spsrow{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.spsfield{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--ink-soft);flex:1;min-width:80px;}
+.spsfield input,.spsfield textarea{border:1.5px solid var(--line);border-radius:9px;padding:8px 9px;font-family:'Outfit';font-size:13.5px;color:var(--ink);font-weight:500;}
+.spsfield input:focus,.spsfield textarea:focus,.spsname:focus{outline:none;border-color:var(--blue);}
+.spsfield.drills{margin-top:9px;}
+.spsmeet{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-soft);white-space:nowrap;}
+.spsaddbtn{width:100%;border:1.5px dashed var(--line);background:none;border-radius:11px;padding:10px;font-family:'Outfit';font-weight:700;font-size:13px;color:var(--ink-soft);cursor:pointer;margin-top:4px;}
+.spsadd{border:1.5px solid var(--line);border-radius:12px;padding:11px;margin-top:4px;}
+.spscatalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:6px;}
+.spscat{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px;font-family:'Outfit';font-weight:600;font-size:12px;color:var(--ink);cursor:pointer;text-align:left;}
+.spscat:hover{border-color:var(--blue);background:#eef4ff;}
+.spscatg{font-size:16px;}
+.spscustom{display:flex;gap:7px;margin-top:6px;}
+.spscustom input{flex:1;border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;font-family:'Outfit';font-size:14px;color:var(--ink);}
+.spscancel{background:none;border:none;color:var(--ink-soft);font-family:'Outfit';font-weight:600;font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;}
+.spsactions{display:flex;gap:10px;margin-top:12px;}
+.spsactions .bigbtn{flex:1;margin:0;}
 
 /* Profile setup ("whose device is this?") */
 .card.setup{max-width:340px;}

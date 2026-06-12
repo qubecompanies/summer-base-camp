@@ -41,6 +41,11 @@ export default function MultiTenantApp() {
   // Family resolved → publish it to the active-family registry so the existing
   // board (config, hooks, components) renders this family's kids/data, then hand
   // off to the full App. Keyed by familyId so a family switch fully remounts.
-  setActiveFamily({ familyId: family.familyId, kids: family.family?.kids || [], pins: family.family?.pins || {} })
+  setActiveFamily({
+    familyId: family.familyId,
+    kids: family.family?.kids || [],
+    pins: family.family?.pins || {},
+    sports: family.family?.sports || [],
+  })
   return <App key={family.familyId} onSignOut={signOut} />
 }
