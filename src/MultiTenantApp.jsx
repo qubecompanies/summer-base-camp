@@ -2,6 +2,7 @@ import React from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useFamily } from './hooks/useFamily'
 import SignIn from './components/SignIn'
+import CreateFamily from './components/CreateFamily'
 
 // Multi-tenant shell (behind the MULTI_TENANT flag — OFF in production).
 //
@@ -17,7 +18,11 @@ export default function MultiTenantApp() {
   if (!ready) return <div className="loading">Loading…</div>
   if (!user) return <SignIn auth={auth} />
 
+  // Signed in but no family yet → onboarding.
+  if (family.status === 'none') return <CreateFamily user={user} onCreate={family.createFamily} />
+
   const who = user.displayName || user.email || 'your account'
+  const kids = family.family?.kids || []
 
   return (
     <div className="mtshell">
@@ -27,22 +32,17 @@ export default function MultiTenantApp() {
         <p className="mtwho">{who}</p>
 
         {family.status === 'loading' && <p className="mtstatus">Checking your family…</p>}
-        {family.status === 'none' && (
-          <p className="mtstatus">
-            ✦ No family yet on this account.<br />
-            <small>Create-a-family onboarding lands in the next step (B).</small>
-          </p>
-        )}
         {family.status === 'ready' && (
           <p className="mtstatus ok">
-            🏡 Family ready: <b>{family.family?.name || family.familyId}</b><br />
-            <small>The full board wires up in Step B.</small>
+            🏡 <b>{family.family?.name || family.familyId}</b><br />
+            <small>{kids.length ? kids.map((k) => `${k.avatar || '•'} ${k.name}`).join(' · ') : 'No kids yet'}</small><br />
+            <small>The full board wires up next (board generalization).</small>
           </p>
         )}
         {family.error && <p className="mtstatus err">⚠ {family.error.code || 'Could not load family.'}</p>}
 
         <button className="sibtn ghost" onClick={() => signOut()}>Sign out</button>
-        <p className="sifoot">Step A preview · multi-tenant build in progress</p>
+        <p className="sifoot">Step B preview · onboarding live, board wiring next</p>
       </div>
     </div>
   )
