@@ -3,7 +3,7 @@ import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, increment, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, FAMILY_ID, FIREBASE_READY } from '../firebase'
+import { db, storage, auth, FAMILY_ID, FIREBASE_READY, MULTI_TENANT } from '../firebase'
 import { getPlayers, setQuestOverrides } from '../config/quests'
 import { activeFamilyId } from '../config/activeFamily'
 import { defById, itemValue, isCustom } from '../config/sports'
@@ -265,7 +265,11 @@ export function useFamilyState() {
   const setAvatar = useCallback(async (playerId, file) => {
     if (!file) return
     if (demo) { setAvatarsState((a) => ({ ...a, [playerId]: URL.createObjectURL(file) })); return }
-    const r = storageRef(storage, `avatars/${FID}/${playerId}`)
+    // Multi-tenant families share ONE login, so the family's uid owns its
+    // storage folder (airtight isolation, no Firestore lookup in rules). The
+    // legacy single-family path stays keyed by familyId.
+    const skey = MULTI_TENANT ? (auth.currentUser?.uid || FID) : FID
+    const r = storageRef(storage, `avatars/${skey}/${playerId}`)
     await uploadBytes(r, file)
     const url = await getDownloadURL(r)
     await setDoc(doc(db, 'families', FID), { avatars: { [playerId]: url } }, { merge: true })
@@ -340,7 +344,8 @@ export function useFamilyState() {
       const url = URL.createObjectURL(file)
       return writeQuest(playerId, questId, { status: 'proof', proofUrl: url, ...extra })
     }
-    const path = `proofs/${FID}/${date}/${playerId}_${questId}_${Date.now()}`
+    const skey = MULTI_TENANT ? (auth.currentUser?.uid || FID) : FID
+    const path = `proofs/${skey}/${date}/${playerId}_${questId}_${Date.now()}`
     const r = storageRef(storage, path)
     await uploadBytes(r, file)
     const url = await getDownloadURL(r)
