@@ -5,33 +5,43 @@ import { fmtMins } from '../lib/format'
 //  1) Screen-time generosity — a multiplier on minutes earned per activity, so
 //     a parent decides how hard screen time is to earn (points are unaffected,
 //     so the reward ladder pace stays predictable).
-//  2) Reward forecast — given kids × assumed points/day, estimate how long to
-//     reach each reward milestone and the team goal.
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const addDays = (n) => {
-  const d = new Date()
-  d.setDate(d.getDate() + n)
-  return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`
-}
-const human = (days) => {
-  if (!isFinite(days) || days <= 0) return '—'
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'}`
-  const w = days / 7
-  return `${w < 2 ? '~1.5' : Math.round(w)} week${Math.round(w) === 1 ? '' : 's'}`
+//  2) Reward planner — answers the intuitive question: "if I want my kids to
+//     reach the reward in N weeks, how many activities a day does each need to
+//     do?" No history assumed; the parent tunes kids, weeks, and reward size.
+const COMFORT = 3 // a sustainable ~activities/day per kid, used as a reference
+
+// Difficulty read for a required activities/day figure. Icon + word so it reads
+// without relying on color (deuteranopia-safe).
+function difficulty(a) {
+  if (a <= 1.5) return { icon: '✓', word: 'Easygoing', cls: 'd1' }
+  if (a <= 3) return { icon: '◐', word: 'Very doable', cls: 'd2' }
+  if (a <= 4.5) return { icon: '▲', word: 'Busy', cls: 'd3' }
+  if (a <= 6) return { icon: '▲', word: 'Ambitious', cls: 'd4' }
+  return { icon: '⚠', word: 'Very demanding', cls: 'd5' }
 }
 
 export default function RewardSheet({
-  screenRate = 1, onSaveRate, kids = [], teamPoints = 0, teamGoal = 6000,
-  milestones = [], recentPerKid = 0, onClose,
+  screenRate = 1, onSaveRate, kids = [], teamGoal = 6000,
+  milestones = [], avgActivityPts = 15, onClose,
 }) {
   const [rate, setRate] = useState(screenRate)
-  const [perKid, setPerKid] = useState(Math.max(10, Math.round(recentPerKid) || 40))
-  const kidCount = Math.max(1, kids.length)
-  const combined = kidCount * perKid
+  const [children, setChildren] = useState(Math.max(1, kids.length || 1))
+  const [weeks, setWeeks] = useState(8)
+  const [goal, setGoal] = useState(teamGoal)
 
-  const rows = [...milestones.map((m) => ({ pts: m.pts, label: m.label })), { pts: teamGoal, label: '🏁 Team goal', goal: true }]
-    .filter((r, i, arr) => arr.findIndex((x) => x.pts === r.pts) === i)
-    .sort((a, b) => a.pts - b.pts)
+  const p = Math.max(1, Math.round(avgActivityPts)) // avg points per activity
+  const days = weeks * 7
+  const ptsPerDayPerKid = days > 0 && children > 0 ? goal / (children * days) : 0
+  const actsPerDayPerKid = ptsPerDayPerKid / p
+  const dailyTeam = children * ptsPerDayPerKid
+  const diff = difficulty(actsPerDayPerKid)
+
+  // At a relaxed/comfortable pace, how many weeks would this reward take?
+  const weeksAtComfort = Math.ceil(goal / (children * COMFORT * p * 7)) || 0
+  // What reward size would be a comfortable pace in the chosen weeks?
+  const comfyGoal = Math.round((children * COMFORT * p * days) / 100) * 100
+
+  const goalLabel = milestones.find((m) => m.pts === goal)?.label
 
   return (
     <div className="modal-bg" onClick={onClose}>
@@ -42,7 +52,7 @@ export default function RewardSheet({
         {/* --- Screen-time generosity --- */}
         <div className="rsec">
           <div className="rsh">📺 Screen-time generosity</div>
-          <p className="rsub">How many minutes each activity is worth. Points (and reward pace) don’t change — this only tunes screen time.</p>
+          <p className="rsub">How many minutes each activity is worth. Points (and the reward plan below) don’t change — this only tunes screen time.</p>
           <input type="range" min={0.25} max={3} step={0.05} value={rate}
                  onChange={(e) => setRate(Number(e.target.value))} className="rslider" />
           <div className="rraterow">
@@ -58,40 +68,62 @@ export default function RewardSheet({
           <button className="rsave" onClick={() => onSaveRate(rate)}>Save screen-time rate</button>
         </div>
 
-        {/* --- Reward forecast --- */}
+        {/* --- Reward planner --- */}
         <div className="rsec">
-          <div className="rsh">🎯 Reward forecast</div>
-          <p className="rsub">
-            With <b>{kidCount}</b> kid{kidCount === 1 ? '' : 's'} earning about <b>{perKid}</b> pts/day each,
-            that’s <b>{combined}</b> team pts/day.
-          </p>
-          <input type="range" min={10} max={150} step={5} value={perKid}
-                 onChange={(e) => setPerKid(Number(e.target.value))} className="rslider" />
-          <div className="rraterow">
-            <span className="rrate">{perKid} pts/day each</span>
-            {recentPerKid > 0 && <span className="rhint">recent pace ≈ {Math.round(recentPerKid)}</span>}
+          <div className="rsh">🎯 Reward planner</div>
+          <p className="rsub">Pick how many kids, how soon you want the reward, and how big it is. We’ll show how many activities a day each kid needs.</p>
+
+          <div className="rfield">
+            <span className="rflab">👧 Children</span>
+            <div className="rstep">
+              <button onClick={() => setChildren((c) => Math.max(1, c - 1))}>−</button>
+              <b>{children}</b>
+              <button onClick={() => setChildren((c) => Math.min(8, c + 1))}>＋</button>
+            </div>
           </div>
 
-          <div className="rforecast">
-            {rows.map((r) => {
-              const reached = teamPoints >= r.pts
-              const remaining = Math.max(0, r.pts - teamPoints)
-              const days = Math.ceil(remaining / combined)
-              return (
-                <div className={`rfrow${r.goal ? ' goal' : ''}${reached ? ' done' : ''}`} key={r.pts}>
-                  <div className="rfi">
-                    <b>{r.label}</b>
-                    <small>{r.pts} pts{reached ? '' : ` · ${remaining} to go`}</small>
-                  </div>
-                  <div className="rfeta">
-                    {reached ? <span className="rfdone">✓ reached</span>
-                      : <><b>{human(days)}</b><small>≈ {addDays(days)}</small></>}
-                  </div>
-                </div>
-              )
-            })}
+          <div className="rfield col">
+            <span className="rflab">📅 Reach it in <b>{weeks}</b> week{weeks === 1 ? '' : 's'}</span>
+            <input type="range" min={1} max={16} step={1} value={weeks}
+                   onChange={(e) => setWeeks(Number(e.target.value))} className="rslider" />
           </div>
-          <p className="rsub small">Estimate only — actual pace depends on how much the kids log each day.</p>
+
+          <div className="rfield col">
+            <span className="rflab">🎁 Reward goal · <b>{goal}</b> pts{goalLabel ? ` · ${goalLabel}` : ''}</span>
+            <input type="range" min={500} max={Math.max(8000, teamGoal * 2)} step={100} value={goal}
+                   onChange={(e) => setGoal(Number(e.target.value))} className="rslider" />
+          </div>
+
+          {/* The headline answer */}
+          <div className={`rplan ${diff.cls}`}>
+            <div className="rplanbig">
+              <span className="rplannum">{actsPerDayPerKid.toFixed(1)}</span>
+              <span className="rplanunit">activities<br />per day, each</span>
+            </div>
+            <div className="rplanside">
+              <div className={`rbadge ${diff.cls}`}>{diff.icon} {diff.word}</div>
+              <div className="rplanmeta">≈ {Math.round(ptsPerDayPerKid)} pts/day each · {Math.round(dailyTeam)} team pts/day</div>
+            </div>
+          </div>
+
+          <p className="rplansentence">
+            To earn <b>{goal} pts</b>{goalLabel ? ` (${goalLabel})` : ''} in <b>{weeks} week{weeks === 1 ? '' : 's'}</b>,
+            each of your <b>{children}</b> kid{children === 1 ? '' : 's'} needs to finish about
+            {' '}<b>{actsPerDayPerKid.toFixed(1)} activities a day</b>.
+          </p>
+
+          {/* Guidance */}
+          <div className="rtips">
+            <div className="rtip">🧭 At a relaxed <b>~{COMFORT} activities/day</b> each, this reward takes about <b>{weeksAtComfort} week{weeksAtComfort === 1 ? '' : 's'}</b>.</div>
+            {actsPerDayPerKid > 4.5 && (
+              <div className="rtip warn">⚠ That’s a lot to keep up. To make it easier: give it more weeks, or set the goal nearer <b>{comfyGoal} pts</b> for this timeframe.</div>
+            )}
+            {actsPerDayPerKid < 1 && (
+              <div className="rtip">💡 Plenty of room — you could shorten the timeframe or raise the goal to <b>{comfyGoal} pts</b> and it’d still be comfortable.</div>
+            )}
+          </div>
+
+          <p className="rsub small">Assumes about <b>{p} pts per activity</b> (your board’s average) and activities on most days. It’s a planning estimate, not a promise.</p>
         </div>
 
         <button className="bigbtn" style={{ background: 'var(--cream)', color: 'var(--ink-soft)' }} onClick={onClose}>Done</button>

@@ -480,13 +480,10 @@ export default function App({ onSignOut } = {}) {
       {showRewards && (
         <RewardSheet
           screenRate={activeScreenRate()} onSaveRate={onSaveRate} kids={PLAYERS}
-          teamPoints={teamPoints} teamGoal={teamGoal} milestones={milestones}
-          recentPerKid={(() => {
-            const rates = PLAYERS.map((p) => {
-              const wk = (derived[p.id]?.weeks || []).filter((w) => w.total > 0)
-              return wk.length ? (wk.reduce((a, w) => a + w.total, 0) / wk.length) / 7 : 0
-            }).filter((r) => r > 0)
-            return rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0
+          teamGoal={teamGoal} milestones={milestones}
+          avgActivityPts={(() => {
+            const ps = WEEKDAY_QUESTS.map((q) => q.pts).filter((n) => n > 0)
+            return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 15
           })()}
           onClose={() => setShowRewards(false)}
         />
