@@ -1,16 +1,16 @@
+// FINAL cutover Storage rules — uid-scoped only. Deploy at the END of cutover
+// (after migration + flag flip). Keeps READ on the legacy /eaker/ avatar path so
+// avatar URLs saved before migration still load; removes legacy WRITE.
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Images only, capped at ~8MB, signed-in users only.
     function okImage() {
       return request.auth != null
         && request.resource.size < 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
 
-    // ---- Multi-tenant: each family login (uid) owns its own folder. Devices
-    // in a family all share that one login, so this gives perfect per-family
-    // isolation without a Firestore lookup (Storage rules can't read Firestore).
+    // Each family login (uid) owns its own folder.
     match /proofs/{uid}/{allPaths=**} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if request.auth.uid == uid && okImage();
@@ -20,17 +20,9 @@ service firebase.storage {
       allow write: if request.auth.uid == uid && okImage();
     }
 
-    // ---- LEGACY single-family (anonymous) paths. Kept during the transition so
-    // the live app keeps working. The {uid} matchers above also cover these for
-    // their own family; these broader rules are removed at the end of cutover
-    // (read is retained for old avatar URLs that were saved under /eaker/).
-    match /proofs/eaker/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if okImage();
-    }
+    // Legacy read-only: old Eaker avatar URLs saved under /eaker/ keep loading.
     match /avatars/eaker/{allPaths=**} {
       allow read: if request.auth != null;
-      allow write: if okImage();
     }
   }
 }

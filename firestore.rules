@@ -1,7 +1,6 @@
-// Additive multi-tenant rules (transition). Keeps `families/eaker` open so the
-// live single-family app still works; ADDS accounts, member-scoped families,
-// invite-only creation, and co-parent self-join. The eaker block is removed at
-// the end of cutover (see firestore.rules.cutover).
+// FINAL cutover Firestore rules — member-scoped + invite-only, NO open eaker.
+// Deploy ONLY after the Eaker family is migrated onto a real login (its members
+// map includes the owner uid) and production is flipped to multi-tenant.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -21,13 +20,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/invites/$(userEmail())).data.familyId;
     }
 
-    // Per-user account -> familyId mapping. Each user sees only their own.
     match /accounts/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Invite-only gate. A user can read their own invite; admins can list/manage
-    // new-family invites; a family member can invite a co-parent to THEIR family.
     match /invites/{email} {
       allow get: if signedIn();
       allow list: if isAdminEmail();
@@ -37,22 +33,12 @@ service cloud.firestore {
         || (signedIn() && resource.data.familyId is string && isMember(resource.data.familyId));
     }
 
-    // LEGACY single-family tree — kept open during the transition. Removed in cutover.
-    match /families/eaker {
-      allow read, write: if signedIn();
-      match /{document=**} { allow read, write: if signedIn(); }
-    }
-
-    // Multi-tenant families.
     match /families/{familyId} {
       allow read, write: if isMember(familyId);
-      // Create requires owner stamp + an invite (or admin).
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && (request.auth.uid in request.resource.data.members)
         && (isAdminEmail() || hasInvite());
-      // Co-parent self-join: an invited (to THIS family) non-member may add only
-      // themselves to the members map.
       allow update: if isMember(familyId)
         || (
           signedIn()
