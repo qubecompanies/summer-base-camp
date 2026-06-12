@@ -29,10 +29,15 @@ export default function RewardSheet({
   const [rate, setRate] = useState(screenRate)
   const [children, setChildren] = useState(Math.max(1, kids.length || 1))
   const [weeks, setWeeks] = useState(8)
-  const [goal, setGoal] = useState(teamGoal)
+  const [goalRaw, setGoal] = useState(teamGoal)
 
   const p = Math.max(1, Math.round(avgActivityPts)) // avg points per activity
   const days = weeks * 7
+  // Cap the reward-goal slider at whatever yields the top of the scale
+  // (SCALE_MAX activities/day) for the current kids & weeks — so the slider can
+  // always reach 10/day. Clamp the stored goal into that range.
+  const goalMax = Math.max(2000, Math.ceil((SCALE_MAX * p * children * days) / 500) * 500)
+  const goal = Math.min(goalRaw, goalMax)
   const ptsPerDayPerKid = days > 0 && children > 0 ? goal / (children * days) : 0
   const actsPerDayPerKid = ptsPerDayPerKid / p
   const dailyTeam = children * ptsPerDayPerKid
@@ -92,7 +97,7 @@ export default function RewardSheet({
 
           <div className="rfield col">
             <span className="rflab">🎁 Reward goal · <b>{goal}</b> pts{goalLabel ? ` · ${goalLabel}` : ''}</span>
-            <input type="range" min={500} max={Math.max(8000, teamGoal * 2)} step={100} value={goal}
+            <input type="range" min={500} max={goalMax} step={100} value={goal}
                    onChange={(e) => setGoal(Number(e.target.value))} className="rslider" />
           </div>
 
