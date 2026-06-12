@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { PLAYERS, ALL_QUESTS, resolveQuest } from '../config/quests'
+import { getPlayers, ALL_QUESTS, resolveQuest } from '../config/quests'
 import { SPORTS, itemValue, tierById, isCustom } from '../config/sports'
 import { fmtMins } from '../lib/format'
 import Avatar from './Avatar'
@@ -20,6 +20,7 @@ export default function ParentPanel({
   // count; 'proof' (photo or description) already counts but the parent can
   // still review, read the boy's note, and revert if it needs a redo.
   const needsReview = (st) => st === 'claimed' || st === 'proof'
+  const PLAYERS = getPlayers()
   const pending = []
   PLAYERS.forEach((p) => {
     ALL_QUESTS.forEach((q0) => {

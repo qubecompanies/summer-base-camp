@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { PROFILES, profileById, effectivePins } from '../config/profiles'
+import { getProfiles, profileById, effectivePins } from '../config/profiles'
 
 // First-launch "whose device is this?" picker + PIN confirm. Binds the device
 // to one profile so the app opens straight to the right person next time.
@@ -8,8 +8,9 @@ export default function ProfileSetup({ onBind, pins }) {
   const [picked, setPicked] = useState(null)
   const [digits, setDigits] = useState('')
   const [error, setError] = useState(false)
-  const prof = profileById(picked)
   const livePins = effectivePins(pins)
+  const prof = profileById(picked, pins)
+  const profiles = getProfiles(pins)
 
   const onPin = (raw) => {
     const v = raw.replace(/\D/g, '').slice(0, 4)
@@ -29,7 +30,7 @@ export default function ProfileSetup({ onBind, pins }) {
           <h2>Whose device is this?</h2>
           <p>Pick a profile to set up this device. You can switch later.</p>
           <div className="profilepicks">
-            {PROFILES.map((p) => (
+            {profiles.map((p) => (
               <button key={p.id} className={`profilepick ${p.id}`} onClick={() => setPicked(p.id)}>
                 <span className="ppav">{p.avatar}</span>
                 <span className="ppname">{p.name}</span>

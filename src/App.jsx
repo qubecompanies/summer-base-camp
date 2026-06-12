@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
-import { auth, FIREBASE_READY } from './firebase'
-import { PLAYERS, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
+import { auth, FIREBASE_READY, MULTI_TENANT } from './firebase'
+import { getPlayers, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
+import { hasActiveFamily } from './config/activeFamily'
 import { fmtMins } from './lib/format'
 import { sportsByPlayer, isCustom } from './config/sports'
 import { useFamilyState } from './hooks/useFamilyState'
@@ -25,11 +26,13 @@ import AwardSheet from './components/AwardSheet'
 import QuestSheet from './components/QuestSheet'
 import QuickLogSheet from './components/QuickLogSheet'
 
-export default function App() {
-  const [authChecked, setAuthChecked] = useState(!FIREBASE_READY)
+export default function App({ onSignOut } = {}) {
+  // Under multi-tenant, the shell already established the family session, so the
+  // app treats itself as authed (its own anonymous sign-in is skipped below).
+  const [authChecked, setAuthChecked] = useState(!FIREBASE_READY || MULTI_TENANT)
   const [authError, setAuthError] = useState(null)
   const [authTry, setAuthTry] = useState(0)
-  const [cur, setCur] = useState('everett')
+  const [cur, setCur] = useState(() => getPlayers()[0]?.id || 'everett')
   const [view, setView] = useState('today')
   const [mode, setMode] = useState('weekday')
   const [parent, setParent] = useState(false)
@@ -53,7 +56,9 @@ export default function App() {
   // renders all-zeros with no clue why. A failed sign-in now surfaces a visible,
   // retryable error instead of a silent empty board.
   useEffect(() => {
-    if (!FIREBASE_READY) return
+    // Multi-tenant: the family is already signed in by the shell — don't kick
+    // off an anonymous sign-in (it would replace the real session).
+    if (!FIREBASE_READY || MULTI_TENANT) return
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) { setAuthError(null); setAuthChecked(true) }
     })
@@ -144,9 +149,12 @@ export default function App() {
   // `questDefs` is read so this recomputes when a parent hides/edits a quest.
   const quests = (mode === 'weekday' ? WEEKDAY_QUESTS : WEEKEND_QUESTS).filter((q) => !isQuestHidden(q.id))
   void questDefs
-  const c = stats[cur]
-  const d = derived[cur]
-  const curPlayer = PLAYERS.find((p) => p.id === cur)
+  const PLAYERS = getPlayers()
+  // Keep the selected kid valid if the family's kids change.
+  const curId = PLAYERS.some((p) => p.id === cur) ? cur : (PLAYERS[0]?.id || cur)
+  const c = stats[curId] || stats[cur] || { bank: 0, pts: 0, spent: 0, done: 0, pend: 0 }
+  const d = derived[curId] || derived[cur] || { streak: 0, weekPoints: {}, weeks: [] }
+  const curPlayer = PLAYERS.find((p) => p.id === curId) || PLAYERS[0]
   const customEntries = Object.entries(state[cur]?.quests || {}).filter(([, q]) => isCustom(q))
   const goalPct = Math.min(100, (teamPoints / teamGoal) * 100)
 
@@ -173,9 +181,14 @@ export default function App() {
             <p>Claim it · prove it · earn your screen · build the team goal</p>
           </div>
         </div>
-        <button className={`parent-toggle${parent ? ' on' : ''}`} onClick={handleParentClick}>
-          <span className="dot" />Parent
-        </button>
+        <div className="topactions">
+          <button className={`parent-toggle${parent ? ' on' : ''}`} onClick={handleParentClick}>
+            <span className="dot" />Parent
+          </button>
+          {onSignOut && (
+            <button className="signoutbtn" onClick={() => onSignOut()} title="Sign out">⎋</button>
+          )}
+        </div>
       </div>
 
       {demo && <div className="demo-banner">Demo mode · add your Firebase keys in .env to save + sync across devices</div>}
@@ -185,7 +198,11 @@ export default function App() {
         <div className="seg">
           <button className={view === 'today' ? 'on' : ''} onClick={() => setView('today')}>Today</button>
           <button className={view === 'week' ? 'on' : ''} onClick={() => setView('week')}>Week</button>
-          <button className={view === 'brothers' ? 'on' : ''} onClick={() => setView('brothers')}>Brothers</button>
+          {PLAYERS.length >= 2 && (
+            <button className={view === 'brothers' ? 'on' : ''} onClick={() => setView('brothers')}>
+              {hasActiveFamily() ? 'Team' : 'Brothers'}
+            </button>
+          )}
         </div>
         <div className="seg">
           <button className={mode === 'weekday' ? 'on' : ''} onClick={() => setMode('weekday')}>Weekday</button>
@@ -199,11 +216,13 @@ export default function App() {
       {/* players */}
       <div className="players">
         {PLAYERS.map((p) => (
-          <div key={p.id} className={`pchip ${p.id}${cur === p.id ? ' active' : ''}`} onClick={() => setCur(p.id)}>
+          <div key={p.id} className={`pchip ${p.id}${curId === p.id ? ' active' : ''}`}
+               style={p.color ? { borderColor: p.color } : undefined}
+               onClick={() => setCur(p.id)}>
             <Avatar className="pav" url={avatars[p.id]} emoji={p.avatar} />
             <div>
-              <div className="pname">{p.name} <span className="age">{p.age}</span></div>
-              <div className="pmeta">{stats[p.id].done} verified · {stats[p.id].pend} pending</div>
+              <div className="pname">{p.name}{p.age ? <span className="age"> {p.age}</span> : null}</div>
+              <div className="pmeta">{(stats[p.id]?.done ?? 0)} verified · {(stats[p.id]?.pend ?? 0)} pending</div>
             </div>
           </div>
         ))}
@@ -254,8 +273,8 @@ export default function App() {
         <WeekView playerName={curPlayer.name} todayPts={c.pts} history={d.weekPoints} weeks={d.weeks} />
       )}
 
-      {/* BROTHERS VIEW */}
-      {view === 'brothers' && (
+      {/* TEAM / BROTHERS VIEW */}
+      {view === 'brothers' && PLAYERS.length >= 2 && (
         <BrothersView stats={stats} derived={derived} avatars={avatars} />
       )}
 

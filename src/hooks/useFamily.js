@@ -12,6 +12,7 @@ export function useFamily(user) {
   const [familyId, setFamilyId] = useState(null)
   const [family, setFamily] = useState(null)
   const [error, setError] = useState(null)
+  const [refresh, setRefresh] = useState(0) // bumped after createFamily to re-resolve
 
   useEffect(() => {
     if (!FIREBASE_READY) { setStatus('none'); return }
@@ -36,7 +37,7 @@ export function useFamily(user) {
       .catch((e) => { if (!cancelled) { setError(e); setStatus('none') } })
 
     return () => { cancelled = true; unsubFamily() }
-  }, [user])
+  }, [user, refresh])
 
   // Create a brand-new family owned by this user and link the account to it.
   // Called by the onboarding flow (Step B). Returns the new familyId.
@@ -54,6 +55,7 @@ export function useFamily(user) {
     if (pins && typeof pins === 'object') familyDoc.pins = pins
     await setDoc(doc(db, 'families', fid), familyDoc)
     await setDoc(doc(db, 'accounts', uid), { familyId: fid, updatedAt: serverTimestamp() }, { merge: true })
+    setRefresh((n) => n + 1) // re-resolve so the app advances to the new family
     return fid
   }, [])
 

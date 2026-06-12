@@ -67,6 +67,11 @@ export const WEEKEND_QUESTS = [
     ideas: ['Trail or lake day', 'Pickup game', 'Build a fort / project', 'Bike somewhere new', 'Help a friend with a job'] },
 ]
 
+// Active kids: the family's kids when running multi-tenant, else the default
+// PLAYERS above. Use this anywhere the board renders "the kids".
+import { activeKids } from './activeFamily'
+export const getPlayers = () => activeKids(PLAYERS)
+
 export const ALL_QUESTS = [...WEEKDAY_QUESTS, ...WEEKEND_QUESTS]
 const rawById = (id) => ALL_QUESTS.find((q) => q.id === id)
 

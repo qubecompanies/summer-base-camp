@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { PROFILES } from '../config/profiles'
+import { getProfiles } from '../config/profiles'
 
 // Parent-only: change the 4-digit PIN for any profile. New values are written
 // to the Firestore family doc and override the env defaults. These are LIGHT
 // family gates, not real security — they still ship in the client bundle.
 export default function PinSheet({ pins, onSave, onClose }) {
+  const PROFILES = getProfiles(pins)
   const [drafts, setDrafts] = useState({})
   const [saved, setSaved] = useState(null)
 

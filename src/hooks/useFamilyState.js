@@ -4,7 +4,8 @@ import {
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, FAMILY_ID, FIREBASE_READY } from '../firebase'
-import { PLAYERS, setQuestOverrides } from '../config/quests'
+import { getPlayers, setQuestOverrides } from '../config/quests'
+import { activeFamilyId } from '../config/activeFamily'
 import { defById, itemValue, isCustom } from '../config/sports'
 import { TEAM_GOAL, MILESTONES } from '../config/milestones'
 import { DEFAULT_PINS } from '../config/profiles'
@@ -57,6 +58,12 @@ function pointsFor(playerState) {
 }
 
 export function useFamilyState() {
+  // Active family + kids. Falls back to the Eaker defaults (FAMILY_ID / PLAYERS)
+  // when no multi-tenant family is set, so the single-family path is unchanged.
+  const FID = activeFamilyId(FAMILY_ID)
+  const players = getPlayers()
+  const kidsKey = players.map((p) => p.id).join(',')
+
   // The active day. Captured on mount, but re-checked whenever the app regains
   // focus so a device left open overnight rolls to the new day instead of being
   // stuck subscribed to yesterday's (empty) docs.
@@ -76,8 +83,8 @@ export function useFamilyState() {
   const [teamPoints, setTeamPoints] = useState(0)
   const [teamGoal, setTeamGoalState] = useState(TEAM_GOAL)
   const [milestones, setMilestonesState] = useState(MILESTONES)
-  const [state, setState] = useState({ everett: { quests: {} }, parker: { quests: {} } })
-  const [history, setHistory] = useState({ everett: {}, parker: {} })
+  const [state, setState] = useState(() => Object.fromEntries(getPlayers().map((p) => [p.id, { quests: {} }])))
+  const [history, setHistory] = useState(() => Object.fromEntries(getPlayers().map((p) => [p.id, {}])))
   const [pins, setPinsState] = useState(DEFAULT_PINS)
   const [avatars, setAvatarsState] = useState({})
   const [redeemed, setRedeemedState] = useState([])
@@ -101,7 +108,7 @@ export function useFamilyState() {
       return
     }
 
-    const familyRef = doc(db, 'families', FAMILY_ID)
+    const familyRef = doc(db, 'families', FID)
     setDoc(familyRef, { teamGoal: TEAM_GOAL }, { merge: true }).catch(() => {})
 
     const onErr = (e) => { console.error('firestore read failed', e); setLoadError(e); setLoading(false) }
@@ -124,8 +131,8 @@ export function useFamilyState() {
       setQuestDefsState(defs)
     }, onErr))
 
-    PLAYERS.forEach((p) => {
-      const sRef = doc(db, 'families', FAMILY_ID, 'state', `${p.id}_${date}`)
+    players.forEach((p) => {
+      const sRef = doc(db, 'families', FID, 'state', `${p.id}_${date}`)
       unsubs.push(onSnapshot(sRef, (snap) => {
         const d = snap.data() || { quests: {} }
         setState((prev) => ({ ...prev, [p.id]: { quests: d.quests || {}, spent: d.spent || 0 } }))
@@ -136,9 +143,9 @@ export function useFamilyState() {
     // Past days don't change, so fetch them once (no live listeners needed).
     let cancelled = false
     const pastDates = lastNDates(HISTORY_DAYS).slice(0, -1)
-    PLAYERS.forEach(async (p) => {
+    players.forEach(async (p) => {
       const entries = await Promise.all(pastDates.map(async (key) => {
-        const snap = await getDoc(doc(db, 'families', FAMILY_ID, 'state', `${p.id}_${key}`))
+        const snap = await getDoc(doc(db, 'families', FID, 'state', `${p.id}_${key}`))
         return [key, snap.exists() ? { quests: snap.data().quests || {} } : null]
       }))
       if (cancelled) return
@@ -148,7 +155,7 @@ export function useFamilyState() {
     })
 
     return () => { cancelled = true; unsubs.forEach((u) => u()) }
-  }, [demo, date])
+  }, [demo, date, FID, kidsKey])
 
   // ---- write helper: set a quest + adjust cumulative team points by delta ----
   const writeQuest = useCallback(async (playerId, questId, patch) => {
@@ -170,7 +177,7 @@ export function useFamilyState() {
       return
     }
 
-    const sRef = doc(db, 'families', FAMILY_ID, 'state', `${playerId}_${date}`)
+    const sRef = doc(db, 'families', FID, 'state', `${playerId}_${date}`)
     await setDoc(sRef, {
       playerId, date,
       quests: { [questId]: patch },
@@ -178,7 +185,7 @@ export function useFamilyState() {
     }, { merge: true })
 
     if (delta) {
-      const familyRef = doc(db, 'families', FAMILY_ID)
+      const familyRef = doc(db, 'families', FID)
       await updateDoc(familyRef, { teamPoints: increment(delta) }).catch(async () => {
         await setDoc(familyRef, { teamPoints: delta, teamGoal: TEAM_GOAL }, { merge: true })
       })
@@ -225,7 +232,7 @@ export function useFamilyState() {
       setState((prev) => ({ ...prev, [playerId]: { ...prev[playerId], spent: next } }))
       return
     }
-    const sRef = doc(db, 'families', FAMILY_ID, 'state', `${playerId}_${date}`)
+    const sRef = doc(db, 'families', FID, 'state', `${playerId}_${date}`)
     await setDoc(sRef, { playerId, date, spent: next, updatedAt: serverTimestamp() }, { merge: true })
   }, [demo, date])
 
@@ -240,16 +247,16 @@ export function useFamilyState() {
       if (patch.milestones) setMilestonesState(patch.milestones)
       return
     }
-    await setDoc(doc(db, 'families', FAMILY_ID), patch, { merge: true })
+    await setDoc(doc(db, 'families', FID), patch, { merge: true })
   }, [demo])
 
   // Parent changes a profile's 4-digit PIN. Stored in the family doc `pins`
   // map; env defaults remain the fallback for any unset key.
   const setPin = useCallback(async (profileId, newPin) => {
     const v = String(newPin || '').replace(/\D/g, '').slice(0, 4)
-    if (v.length !== 4 || !['everett', 'parker', 'parent'].includes(profileId)) return
+    if (v.length !== 4 || ![...players.map((p) => p.id), 'parent'].includes(profileId)) return
     if (demo) { setPinsState((p) => ({ ...p, [profileId]: v })); return }
-    await setDoc(doc(db, 'families', FAMILY_ID), { pins: { [profileId]: v } }, { merge: true })
+    await setDoc(doc(db, 'families', FID), { pins: { [profileId]: v } }, { merge: true })
   }, [demo])
 
   // Parent sets a photo avatar for a boy. Uploaded to Storage; URL lives in the
@@ -258,10 +265,10 @@ export function useFamilyState() {
   const setAvatar = useCallback(async (playerId, file) => {
     if (!file) return
     if (demo) { setAvatarsState((a) => ({ ...a, [playerId]: URL.createObjectURL(file) })); return }
-    const r = storageRef(storage, `avatars/${FAMILY_ID}/${playerId}`)
+    const r = storageRef(storage, `avatars/${FID}/${playerId}`)
     await uploadBytes(r, file)
     const url = await getDownloadURL(r)
-    await setDoc(doc(db, 'families', FAMILY_ID), { avatars: { [playerId]: url } }, { merge: true })
+    await setDoc(doc(db, 'families', FID), { avatars: { [playerId]: url } }, { merge: true })
   }, [demo])
 
   // Parent edits a built-in quest (title / min / pts) or hides it. Patch is
@@ -273,7 +280,7 @@ export function useFamilyState() {
     setQuestOverrides(nextDefs)
     setQuestDefsState(nextDefs)
     if (demo) return
-    await setDoc(doc(db, 'families', FAMILY_ID), { questDefs: { [questId]: patch } }, { merge: true })
+    await setDoc(doc(db, 'families', FID), { questDefs: { [questId]: patch } }, { merge: true })
   }, [demo, questDefs])
 
   // Parent marks a reached milestone as cashed-in (or undoes it). Stored as an
@@ -282,7 +289,7 @@ export function useFamilyState() {
     const cur = Array.isArray(redeemed) ? redeemed : []
     const next = cur.includes(pts) ? cur.filter((x) => x !== pts) : [...cur, pts].sort((a, b) => a - b)
     if (demo) { setRedeemedState(next); return }
-    await setDoc(doc(db, 'families', FAMILY_ID), { redeemed: next }, { merge: true })
+    await setDoc(doc(db, 'families', FID), { redeemed: next }, { merge: true })
   }, [demo, redeemed])
 
   // Fully remove an entry (used for custom activities). Refunds points if it
@@ -300,10 +307,10 @@ export function useFamilyState() {
       if (refund) setTeamPoints((t) => t - refund)
       return
     }
-    const sRef = doc(db, 'families', FAMILY_ID, 'state', `${playerId}_${date}`)
+    const sRef = doc(db, 'families', FID, 'state', `${playerId}_${date}`)
     await updateDoc(sRef, { [`quests.${questId}`]: deleteField(), updatedAt: serverTimestamp() }).catch(() => {})
     if (refund) {
-      await updateDoc(doc(db, 'families', FAMILY_ID), { teamPoints: increment(-refund) }).catch(() => {})
+      await updateDoc(doc(db, 'families', FID), { teamPoints: increment(-refund) }).catch(() => {})
     }
   }, [demo, date])
 
@@ -315,7 +322,7 @@ export function useFamilyState() {
       const url = URL.createObjectURL(file)
       return writeQuest(playerId, questId, { status: 'proof', proofUrl: url, ...extra })
     }
-    const path = `proofs/${FAMILY_ID}/${date}/${playerId}_${questId}_${Date.now()}`
+    const path = `proofs/${FID}/${date}/${playerId}_${questId}_${Date.now()}`
     const r = storageRef(storage, path)
     await uploadBytes(r, file)
     const url = await getDownloadURL(r)
@@ -323,7 +330,7 @@ export function useFamilyState() {
   }, [demo, writeQuest, date])
 
   const resetToday = useCallback(async () => {
-    for (const p of PLAYERS) {
+    for (const p of players) {
       const ps = stateRef.current[p.id]?.quests || {}
       let refund = 0
       for (const [qid, q] of Object.entries(ps)) {
@@ -333,25 +340,22 @@ export function useFamilyState() {
         setState((prev) => ({ ...prev, [p.id]: { quests: {} } }))
         if (refund) setTeamPoints((t) => t - refund)
       } else {
-        const sRef = doc(db, 'families', FAMILY_ID, 'state', `${p.id}_${date}`)
+        const sRef = doc(db, 'families', FID, 'state', `${p.id}_${date}`)
         await setDoc(sRef, { quests: {}, spent: 0, updatedAt: serverTimestamp() }, { merge: true })
         if (refund) {
-          await updateDoc(doc(db, 'families', FAMILY_ID), { teamPoints: increment(-refund) }).catch(() => {})
+          await updateDoc(doc(db, 'families', FID), { teamPoints: increment(-refund) }).catch(() => {})
         }
       }
     }
   }, [demo, date])
 
-  const stats = {
-    everett: pointsFor(state.everett),
-    parker: pointsFor(state.parker),
-  }
+  const stats = Object.fromEntries(players.map((p) => [p.id, pointsFor(state[p.id] || { quests: {} })]))
 
   // Per-player derived analytics: streak, current-week point map, badges.
   // Today's live state is merged over the fetched history.
   const derived = useMemo(() => {
     const out = {}
-    PLAYERS.forEach((p) => {
+    players.forEach((p) => {
       const merged = { ...(history[p.id] || {}), [date]: state[p.id] || { quests: {} } }
       out[p.id] = {
         streak: computeStreak(merged),
@@ -361,7 +365,7 @@ export function useFamilyState() {
       }
     })
     return out
-  }, [history, state, date])
+  }, [history, state, date, kidsKey])
 
   return {
     date, demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, history, derived,

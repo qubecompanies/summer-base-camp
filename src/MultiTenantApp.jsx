@@ -1,8 +1,10 @@
 import React from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useFamily } from './hooks/useFamily'
+import { setActiveFamily } from './config/activeFamily'
 import SignIn from './components/SignIn'
 import CreateFamily from './components/CreateFamily'
+import App from './App.jsx'
 
 // Multi-tenant shell (behind the MULTI_TENANT flag — OFF in production).
 //
@@ -21,29 +23,24 @@ export default function MultiTenantApp() {
   // Signed in but no family yet → onboarding.
   if (family.status === 'none') return <CreateFamily user={user} onCreate={family.createFamily} />
 
-  const who = user.displayName || user.email || 'your account'
-  const kids = family.family?.kids || []
+  if (family.status === 'loading') return <div className="loading">Loading your family…</div>
 
-  return (
-    <div className="mtshell">
-      <div className="mtcard">
-        <div className="badge-sun">☀</div>
-        <h2>Signed in</h2>
-        <p className="mtwho">{who}</p>
-
-        {family.status === 'loading' && <p className="mtstatus">Checking your family…</p>}
-        {family.status === 'ready' && (
-          <p className="mtstatus ok">
-            🏡 <b>{family.family?.name || family.familyId}</b><br />
-            <small>{kids.length ? kids.map((k) => `${k.avatar || '•'} ${k.name}`).join(' · ') : 'No kids yet'}</small><br />
-            <small>The full board wires up next (board generalization).</small>
-          </p>
-        )}
-        {family.error && <p className="mtstatus err">⚠ {family.error.code || 'Could not load family.'}</p>}
-
-        <button className="sibtn ghost" onClick={() => signOut()}>Sign out</button>
-        <p className="sifoot">Step B preview · onboarding live, board wiring next</p>
+  if (family.error) {
+    return (
+      <div className="mtshell">
+        <div className="mtcard">
+          <div className="badge-sun">☀</div>
+          <h2>Couldn’t load your family</h2>
+          <p className="mtstatus err">⚠ {family.error.code || 'Please try again.'}</p>
+          <button className="sibtn ghost" onClick={() => signOut()}>Sign out</button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  // Family resolved → publish it to the active-family registry so the existing
+  // board (config, hooks, components) renders this family's kids/data, then hand
+  // off to the full App. Keyed by familyId so a family switch fully remounts.
+  setActiveFamily({ familyId: family.familyId, kids: family.family?.kids || [], pins: family.family?.pins || {} })
+  return <App key={family.familyId} onSignOut={signOut} />
 }
