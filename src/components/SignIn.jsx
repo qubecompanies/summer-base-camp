@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { authMessage } from '../hooks/useAuth'
+import LegalSheet from './LegalSheet'
 
 // Family sign-in screen: Google + email/password, with create-account and
 // password-reset modes. Deuteranopia-safe palette (blue / amber / teal) with
@@ -10,6 +11,7 @@ export default function SignIn({ auth }) {
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const [notice, setNotice] = useState('')
+  const [showLegal, setShowLegal] = useState(false)
 
   const switchMode = (m) => { setMode(m); setError?.(null); setNotice('') }
 
@@ -89,8 +91,12 @@ export default function SignIn({ auth }) {
           )}
         </div>
 
-        <p className="sifoot">One login per family · everyone shares it, then a PIN picks who’s using it.</p>
+        <p className="sifoot">
+          One login per family · everyone shares it, then a PIN picks who’s using it.<br />
+          By continuing you agree to our <button type="button" className="legallink" onClick={() => setShowLegal(true)}>Privacy &amp; Terms</button>.
+        </p>
       </div>
+      {showLegal && <LegalSheet onClose={() => setShowLegal(false)} />}
     </div>
   )
 }

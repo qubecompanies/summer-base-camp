@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,6 +14,19 @@ const firebaseConfig = {
 }
 
 export const app = initializeApp(firebaseConfig)
+
+// App Check (abuse protection). Activates only when a reCAPTCHA v3 site key is
+// provided (VITE_RECAPTCHA_KEY) — inert otherwise, so dev/local is unaffected.
+// Enable it before any public launch and turn on enforcement in the console.
+if (import.meta.env.VITE_RECAPTCHA_KEY) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_KEY),
+      isTokenAutoRefreshEnabled: true,
+    })
+  } catch (e) { console.warn('App Check init failed', e) }
+}
+
 export const db = getFirestore(app)
 export const storage = getStorage(app)
 export const auth = getAuth(app)

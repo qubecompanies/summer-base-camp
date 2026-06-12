@@ -328,6 +328,13 @@ body{
 .spsactions .bigbtn{flex:1;margin:0;}
 .ialist{display:flex;flex-direction:column;gap:6px;}
 .iarow{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--ink);}
+.legallink{background:none;border:none;padding:0;color:var(--blue);font-weight:700;font-family:inherit;font-size:inherit;cursor:pointer;text-decoration:underline;}
+.legalsheet{max-width:440px;width:100%;text-align:left;max-height:88vh;overflow-y:auto;}
+.legalsheet h2{text-align:center;}
+.legalupd{font-size:11px;color:var(--ink-soft);text-align:center;margin:-4px 0 12px;}
+.legalsheet h3{font-family:'Bricolage Grotesque';font-size:15px;color:var(--ink);margin:14px 0 6px;}
+.legalsheet ul{margin:0;padding-left:18px;}
+.legalsheet li{font-size:12.5px;color:var(--ink);line-height:1.5;margin-bottom:7px;}
 /* Rewards & screen-time sheet */
 .rewardsheet{max-width:440px;width:100%;text-align:left;max-height:88vh;overflow-y:auto;}
 .rewardsheet h2{text-align:center;}

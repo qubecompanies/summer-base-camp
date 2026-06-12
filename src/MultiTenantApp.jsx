@@ -5,6 +5,7 @@ import { setActiveFamily } from './config/activeFamily'
 import SignIn from './components/SignIn'
 import CreateFamily from './components/CreateFamily'
 import NoInvite from './components/NoInvite'
+import MigrateEaker from './components/MigrateEaker'
 import App from './App.jsx'
 
 // Multi-tenant shell (behind the MULTI_TENANT flag — OFF in production).
@@ -23,6 +24,9 @@ export default function MultiTenantApp() {
 
   // Signed in but not invited → invite-only gate.
   if (family.status === 'noinvite') return <NoInvite email={user.email} onSignOut={signOut} />
+
+  // Admin migrating the legacy family.
+  if (family.status === 'migrate') return <MigrateEaker user={user} onMigrate={family.migrate} onSignOut={signOut} />
 
   // Signed in, invited/admin, but no family yet → onboarding.
   if (family.status === 'none') return <CreateFamily user={user} onCreate={family.createFamily} />

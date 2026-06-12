@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { db, FIREBASE_READY, isAdmin } from '../firebase'
+import { migrateEaker } from '../lib/migrateEaker'
 
 const emailKey = (user) => (user?.email || '').trim().toLowerCase()
 
@@ -63,7 +64,18 @@ export function useFamily(user) {
         } catch (e) { if (!cancelled) { setError(e) } }
       }
 
-      // 2b) Invited (no family) or admin → may create a family.
+      // 2b) Admin with the legacy family still unclaimed → offer migration.
+      if (isAdmin(user)) {
+        try {
+          const eaker = await getDoc(doc(db, 'families', 'eaker'))
+          if (!cancelled && eaker.exists() && !eaker.data().ownerUid) {
+            setStatus('migrate'); setFamilyId(null); setFamily(null); return
+          }
+        } catch (_) { /* fall through to create */ }
+        if (cancelled) return
+      }
+
+      // 2c) Invited (no family) or admin → may create a family.
       if (invite || isAdmin(user)) { setStatus('none'); setFamilyId(null); setFamily(null); return }
 
       // 3) Not invited at all.
@@ -96,5 +108,11 @@ export function useFamily(user) {
 
   const retry = useCallback(() => setRefresh((n) => n + 1), [])
 
-  return { status, familyId, family, error, createFamily, retry }
+  // One-time: claim + seed the legacy Eaker family for this (admin) login.
+  const migrate = useCallback(async (uid) => {
+    await migrateEaker(uid)
+    setRefresh((n) => n + 1)
+  }, [])
+
+  return { status, familyId, family, error, createFamily, migrate, retry }
 }
