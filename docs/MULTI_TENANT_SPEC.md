@@ -29,32 +29,43 @@
 
 ## 2. Target architecture
 
-### 2.1 Identity
-Replace anonymous auth with **real accounts** (Google sign-in recommended — see §7). Each parent has a stable `uid`. Kids do **not** need accounts; they keep using the on-device profile binding + PIN gate. Only the parent(s) authenticate to Firebase; the kid devices ride on the family the parent set up (a kid device is bound to a family + profile at setup time and stores a family-scoped, read-limited token — see §6 open question on kid-device auth).
+### 2.1 Identity — DECIDED: one family login + PINs
+Each **family has a single login** (created with Google *or* email/password). Every device in the household — parents and kids — signs in with that one family account, then the existing **PIN gate** picks who is using it (parent vs. each kid). No per-kid emails. This is the model the app already implements (device binding + `useDeviceIdentity` + `PinModal`); we are only swapping *anonymous* auth for *one real account*.
+
+- The family account's `uid` is the owner/member of exactly one family.
+- Separate per-parent logins (so Mom and Dad each have their own account on the same family) are a **later** enhancement; the data model leaves room for it (`members` map) but the MVP has one login per family.
+- Because there is one uid per family, we can key the family by a mapping doc rather than forcing `familyId == uid` (keeps migration trivial and multi-parent open). See §2.2.
 
 ### 2.2 Firestore data model
 ```
-families/{familyId}
+accounts/{uid}
+  familyId: <familyId>                        // where this login belongs (set at create/join)
+
+families/{familyId}                           // familyId = generated id ('eaker' kept for us)
   name: "The Eaker Family"
-  createdBy: <uid>
-  members: { <uid>: "admin" | "parent" }     // who can read/write this family
-  joinCode: "SUN-4F2K"                        // short code to add another parent
+  ownerUid: <uid>                             // the family login (the member, for MVP)
+  members: { <uid>: "owner" }                 // room for multi-parent later
   kids: [ { id, name, avatar, color, sports:[…] }, … ]   // was hardcoded everett/parker
   teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs   // unchanged
-  questOverrides / customQuests: {…}          // per-family quest board (Phase 2)
+  joinCode: "SUN-4F2K"                         // for adding a second parent later (Phase 3)
 
-  state/{kidId}_{YYYY-MM-DD}                  // unchanged shape (quests, spent)
-
-userIndex/{uid}
-  familyIds: [ <familyId>, … ]                // fast "which families am I in?" lookup
+  state/{kidId}_{YYYY-MM-DD}                   // unchanged shape (quests, spent)
 ```
 
-Key point: the daily-state subcollection and Storage paths are **already** `families/{id}/…`, so the read/write logic barely changes — we swap the constant `FAMILY_ID` for a runtime `familyId` resolved at login.
+Key points:
+- The daily-state subcollection and Storage paths are **already** `families/{id}/…`, so read/write logic barely changes — swap the constant `FAMILY_ID` for a runtime `familyId` resolved at login via `accounts/{uid}`.
+- `familyId` is a **generated id, not the uid** — so the existing `families/eaker` tree is reused as-is (set `accounts/{philipUid}.familyId = 'eaker'`; **no data moves**), and a future second parent can map to the same `familyId`.
+- **`kids` becomes data** (replaces hardcoded `everett`/`parker`). This pulls the "dynamic profiles" work into the MVP — a second family must define its own kids. Sports, which are currently hardcoded per named kid (`jrotc`→everett, `swim`→parker), move to an optional per-kid `sports` list; new families start with the universal quest board + custom activities and can add sports.
 
 ### 2.3 Security rules (the real isolation)
 ```
+match /accounts/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
+}
 match /families/{familyId} {
   allow read, write: if isMember(familyId);
+  // create allowed if the creator stamps themselves as owner (bootstrapping)
+  allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
   match /{document=**} { allow read, write: if isMember(familyId); }
 }
 function isMember(fid) {
@@ -62,7 +73,7 @@ function isMember(fid) {
     && request.auth.uid in get(/databases/$(database)/documents/families/$(fid)).data.members;
 }
 ```
-Create-a-family is the one write allowed to a non-member (you must be able to make the family you're about to belong to); guarded so the creator puts their own uid in `members`.
+A signed-in user can only read/write their own `accounts/{uid}` and the one family whose `members` map contains their uid. Family creation is the single write a non-member may do, and only if they put their own uid as owner.
 
 ### 2.4 Routing / app flow
 ```
@@ -77,13 +88,28 @@ signed in, 2+ families     → Family picker, then board
 
 ## 3. Phasing (each phase independently shippable; Eaker family keeps working throughout)
 
-### Phase 1 — Foundation: real auth + membership + rules
-- Enable the chosen auth provider in Firebase (§7).
-- Add Google/email sign-in screen; replace the silent `signInAnonymously` path.
-- Introduce `members` + `userIndex`; **migrate the Eaker family** (add your uid as `admin`).
-- Rewrite `firestore.rules` to membership-based isolation; deploy rules **before** the hosting build (per project deploy discipline).
-- `FAMILY_ID` constant → `useFamily()` context, resolving to Eaker for existing users.
-- **Outcome:** identical UX for your family, but data is now properly access-controlled and the foundation for other families exists.
+### Phase 1 — MVP: real auth + create-family + dynamic kids + isolation
+Because a second family needs its own kids, the old "Phase 1 + Phase 2" merge into one shippable multi-family MVP. Built in three sub-steps so the **live Eaker family never breaks**:
+
+**Step A — Auth layer, no live risk (rules unchanged).**
+- Enable Google + Email/Password providers in Firebase console (Anonymous stays on).
+- New `src/hooks/useAuth.js`: user state, Google sign-in (popup/redirect), email create/sign-in/**reset**, sign-out, typed error messages.
+- New `src/components/SignIn.jsx`: branded, deuteranopia-safe screen with both paths + "forgot password".
+- New `src/hooks/useFamily.js` (+ context): after sign-in, read `accounts/{uid}.familyId`; expose `familyId`, family doc, role; handle the 0-family (onboarding) and 1-family cases.
+- Gate the app on a real user instead of the anonymous session. Ship behind a flag if needed.
+
+**Step B — Dynamic family data (additive, dual-read).**
+- `families/{id}.kids` array becomes the source of truth for profiles; `useFamilyState`, `useDeviceIdentity`, cards, ParentPanel read kids from it (fallback to the hardcoded `everett/parker` until migrated).
+- `FAMILY_ID` constant → `familyId` from `useFamily()` everywhere (`useFamilyState`, Storage paths).
+- New `src/components/Onboarding.jsx` + `CreateFamily`: name the family, add kids (name/avatar/color), set team goal + PINs → writes `families/{newId}` + `accounts/{uid}`.
+- Sports become an optional per-kid `sports` list (Eaker's jrotc/lift/swim seeded during migration; new families add their own or skip).
+
+**Step C — Flip isolation, retire anonymous (the one risky step; commit checkpoint first).**
+- One-time migration for Eaker: on your first real sign-in, set `families/eaker.ownerUid/members` to your uid and `accounts/{uid}.familyId = 'eaker'` (no data moves).
+- Deploy `firestore.rules` (owner/member-scoped) **before** the hosting build (per deploy discipline).
+- Verify every family device works on the real login, **then** disable Anonymous auth in the console as the final action.
+
+**Outcome:** any family can sign up, create their family with their own kids, and run an isolated camp. Eaker keeps all history.
 
 ### Phase 2 — Dynamic family config
 - Move kids/profiles/team goal/PINs out of `config/*.js` into the family doc (`kids`, `pins`, `teamGoal`).
@@ -124,21 +150,20 @@ signed in, 2+ families     → Family picker, then board
 ---
 
 ## 6. Open questions / decisions still needed
-1. **Kid-device auth after anonymous is retired.** Options: (a) kid devices also use a lightweight Google/anon-with-custom-claim tied to the family; (b) keep anonymous *only* for kid devices but scope rules so an anon UID must be pre-registered in the family's `kids`/`deviceTokens`. Leaning (b) to avoid forcing kids to have accounts. **Needs a decision in Phase 1 design.**
+1. ~~Kid-device auth~~ **DECIDED (2026-06-11): one family login + PINs.** Every device signs in with the single family account; the PIN gate picks the person. No per-kid accounts. (§2.1)
 2. **One family per parent, or many?** Spec supports many (`userIndex.familyIds[]`); simplest UX assumes one. Cheap to keep the array even if UI shows one.
 3. **Branding scope** — name only, or name + accent color + icon? Affects Phase 4 size.
 4. **Hosting** — stay on `summer-base-camp.web.app` (one project, multi-tenant), or offer custom subdomains later? Recommend single project for v1.
 
 ---
 
-## 7. ⏳ PENDING DECISION — Auth method (gates Phase 1)
-| Option | Pros | Cons |
-|---|---|---|
-| **Google sign-in only** *(recommended)* | One tap on phones, no passwords, no reset flow to build, reliable token persistence | Requires a Google account |
-| Email / password | Works without Google | You build/maintain verification + password reset; weaker mobile UX |
-| Both | Widest reach | Most surface area to build & support |
+## 7. ✅ DECIDED — Auth method: Google **and** Email/Password
+Both providers ship in Phase 1 (decided 2026-06-11, driven by strong inbound demand from families who may not all have Google accounts).
 
-**Recommendation:** **Google-only** for Phase 1; add email later only if a prospective family lacks Google. This spec assumes Google-only until told otherwise.
+- **Google** — one-tap sign-in (popup on desktop, redirect on mobile PWA).
+- **Email / Password** — create account, sign in, **password reset** email, and basic validation. This adds a reset/verification flow we must build and test.
+
+Implication: the sign-in screen carries both paths; the email flow is the larger surface area (reset, error messaging, "email already in use", weak-password, etc.).
 
 ---
 
