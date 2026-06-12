@@ -8,7 +8,7 @@ export default function ParentPanel({
   state, stats, derived, avatars = {}, teamPoints = 0, milestones = [], redeemed = [],
   onSignOff, onRevert, onReset, onLogScreen, onSetAvatar, onRedeem,
   onOpenAssign, onOpenLadder, onOpenPins, onOpenAward, onOpenQuests, onOpenSports,
-  onOpenRewards, onOpenTour,
+  onOpenRewards, onOpenTour, onOpenCoParent, onOpenAdmin,
 }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const [notes, setNotes] = useState({})
@@ -191,6 +191,8 @@ export default function ParentPanel({
               {onOpenSports && <button className="ptool" onClick={onOpenSports}>🎯 Sports &amp; practice</button>}
               {onOpenRewards && <button className="ptool" onClick={onOpenRewards}>📊 Rewards &amp; screen time</button>}
               {onOpenTour && <button className="ptool" onClick={onOpenTour}>🧭 App walkthrough</button>}
+              {onOpenCoParent && <button className="ptool" onClick={onOpenCoParent}>👪 Invite co-parent</button>}
+              {onOpenAdmin && <button className="ptool" onClick={onOpenAdmin}>🛡️ Manage invites</button>}
               <button className="ptool" onClick={onOpenLadder}>🏁 Edit reward ladder</button>
               <button className="ptool" onClick={onOpenAward}>🎁 Bonus / docking</button>
               <button className="ptool" onClick={onOpenPins}>🔑 Change PINs</button>

@@ -33,3 +33,11 @@ export const FIREBASE_READY = Boolean(import.meta.env.VITE_FIREBASE_PROJECT_ID)
 // and test the new real-auth + create-family flow. Retire this flag after the
 // Phase 1 (A/B/C) migration is complete and anonymous auth is disabled.
 export const MULTI_TENANT = import.meta.env.VITE_MULTI_TENANT === 'true'
+
+// Super-admin emails — can approve new families (manage invites) and always
+// create a family. Override via VITE_ADMIN_EMAILS (comma-separated). Keep this
+// in sync with the email hardcoded in firestore.rules (isAdminEmail).
+export const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'philipeaker@gmail.com')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+export const isAdmin = (user) =>
+  Boolean(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))

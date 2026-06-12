@@ -326,6 +326,8 @@ body{
 .spscancel{background:none;border:none;color:var(--ink-soft);font-family:'Outfit';font-weight:600;font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;}
 .spsactions{display:flex;gap:10px;margin-top:12px;}
 .spsactions .bigbtn{flex:1;margin:0;}
+.ialist{display:flex;flex-direction:column;gap:6px;}
+.iarow{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:600;color:var(--ink);}
 /* Rewards & screen-time sheet */
 .rewardsheet{max-width:440px;width:100%;text-align:left;max-height:88vh;overflow-y:auto;}
 .rewardsheet h2{text-align:center;}

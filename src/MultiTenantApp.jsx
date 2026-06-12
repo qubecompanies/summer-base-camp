@@ -4,6 +4,7 @@ import { useFamily } from './hooks/useFamily'
 import { setActiveFamily } from './config/activeFamily'
 import SignIn from './components/SignIn'
 import CreateFamily from './components/CreateFamily'
+import NoInvite from './components/NoInvite'
 import App from './App.jsx'
 
 // Multi-tenant shell (behind the MULTI_TENANT flag — OFF in production).
@@ -20,7 +21,10 @@ export default function MultiTenantApp() {
   if (!ready) return <div className="loading">Loading…</div>
   if (!user) return <SignIn auth={auth} />
 
-  // Signed in but no family yet → onboarding.
+  // Signed in but not invited → invite-only gate.
+  if (family.status === 'noinvite') return <NoInvite email={user.email} onSignOut={signOut} />
+
+  // Signed in, invited/admin, but no family yet → onboarding.
   if (family.status === 'none') return <CreateFamily user={user} onCreate={family.createFamily} />
 
   if (family.status === 'loading') return <div className="loading">Loading your family…</div>
@@ -48,5 +52,5 @@ export default function MultiTenantApp() {
     sports: family.family?.sports || [],
     screenRate: typeof family.family?.screenRate === 'number' ? family.family.screenRate : 1,
   })
-  return <App key={family.familyId} onSignOut={signOut} />
+  return <App key={family.familyId} onSignOut={signOut} currentUser={user} familyId={family.familyId} />
 }

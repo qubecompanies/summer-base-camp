@@ -1,40 +1,67 @@
-// PROPOSED additive rules for the multi-tenant transition (Step B).
-// NOT yet deployed. This is a STAGING file — review, then (on approval) it is
-// copied over firestore.rules and deployed BEFORE the hosting build.
-//
-// Why it's safe: it ADDS access for authenticated users to their own account
-// and their own family, while LEAVING the existing `families/eaker` rule open
-// to any signed-in (incl. anonymous) client. Firestore unions all matching
-// rules, so the live single-family app is unaffected. The open eaker rule is
-// removed only in Step C, after the Eaker family is migrated to a real login.
+// Additive multi-tenant rules (transition). Keeps `families/eaker` open so the
+// live single-family app still works; ADDS accounts, member-scoped families,
+// invite-only creation, and co-parent self-join. The eaker block is removed at
+// the end of cutover (see firestore.rules.cutover).
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function userEmail() {
+      return signedIn() && request.auth.token.email is string ? request.auth.token.email.lower() : '';
+    }
+    function isAdminEmail() { return userEmail() == 'philipeaker@gmail.com'; }
     function isMember(fid) {
-      return request.auth != null
+      return signedIn()
         && request.auth.uid in get(/databases/$(database)/documents/families/$(fid)).data.members;
+    }
+    function hasInvite() {
+      return userEmail() != '' && exists(/databases/$(database)/documents/invites/$(userEmail()));
+    }
+    function inviteFamily() {
+      return get(/databases/$(database)/documents/invites/$(userEmail())).data.familyId;
     }
 
     // Per-user account -> familyId mapping. Each user sees only their own.
     match /accounts/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // LEGACY single-family tree — kept open during the transition so the live
-    // app (anonymous auth) keeps working. Removed in Step C.
+    // Invite-only gate. A user can read their own invite; admins can list/manage
+    // new-family invites; a family member can invite a co-parent to THEIR family.
+    match /invites/{email} {
+      allow get: if signedIn();
+      allow list: if isAdminEmail();
+      allow create, update: if isAdminEmail()
+        || (signedIn() && request.resource.data.familyId is string && isMember(request.resource.data.familyId));
+      allow delete: if isAdminEmail()
+        || (signedIn() && resource.data.familyId is string && isMember(resource.data.familyId));
+    }
+
+    // LEGACY single-family tree — kept open during the transition. Removed in cutover.
     match /families/eaker {
       allow read, write: if signedIn();
       match /{document=**} { allow read, write: if signedIn(); }
     }
 
-    // Multi-tenant families: a member reads/writes only their own family.
-    // Creation requires the creator to stamp themselves as owner + member.
+    // Multi-tenant families.
     match /families/{familyId} {
       allow read, write: if isMember(familyId);
-      allow create: if request.auth != null
+      // Create requires owner stamp + an invite (or admin).
+      allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
-        && (request.auth.uid in request.resource.data.members);
+        && (request.auth.uid in request.resource.data.members)
+        && (isAdminEmail() || hasInvite());
+      // Co-parent self-join: an invited (to THIS family) non-member may add only
+      // themselves to the members map.
+      allow update: if isMember(familyId)
+        || (
+          signedIn()
+          && hasInvite()
+          && inviteFamily() == familyId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt'])
+          && request.resource.data.members[request.auth.uid] != null
+          && !(request.auth.uid in resource.data.members)
+        );
       match /{document=**} {
         allow read, write: if isMember(familyId);
       }

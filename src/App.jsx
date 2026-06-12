@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
-import { auth, FIREBASE_READY, MULTI_TENANT } from './firebase'
+import { auth, FIREBASE_READY, MULTI_TENANT, isAdmin } from './firebase'
 import { getPlayers, WEEKDAY_QUESTS, WEEKEND_QUESTS, ANCHORS, isQuestHidden } from './config/quests'
 import { hasActiveFamily, activeScreenRate } from './config/activeFamily'
 import { fmtMins } from './lib/format'
@@ -28,8 +28,11 @@ import QuickLogSheet from './components/QuickLogSheet'
 import SportsSheet from './components/SportsSheet'
 import RewardSheet from './components/RewardSheet'
 import Walkthrough from './components/Walkthrough'
+import InviteAdmin from './components/InviteAdmin'
+import CoParentSheet from './components/CoParentSheet'
+import { addCoParentInvite } from './lib/invites'
 
-export default function App({ onSignOut } = {}) {
+export default function App({ onSignOut, currentUser, familyId } = {}) {
   // Under multi-tenant, the shell already established the family session, so the
   // app treats itself as authed (its own anonymous sign-in is skipped below).
   const [authChecked, setAuthChecked] = useState(!FIREBASE_READY || MULTI_TENANT)
@@ -51,6 +54,8 @@ export default function App({ onSignOut } = {}) {
   const [showSports, setShowSports] = useState(false)
   const [showRewards, setShowRewards] = useState(false)
   const [showTour, setShowTour] = useState(false)
+  const [showAdmin, setShowAdmin] = useState(false)
+  const [showCoParent, setShowCoParent] = useState(false)
   const [toast, setToast] = useState({ msg: '', show: false })
 
   const { demo, loading, loadError, teamPoints, teamGoal, milestones, pins, avatars, redeemed, questDefs, state, stats, derived, actions } = useFamilyState()
@@ -119,6 +124,10 @@ export default function App({ onSignOut } = {}) {
   const onSaveSports = (sports) => { actions.setSports(sports); flash('🎯 Sports updated') }
   const onSaveRate = (rate) => { actions.setScreenRate(rate); flash('📺 Screen-time rate updated') }
   const closeTour = () => { setShowTour(false); try { localStorage.setItem('sbc_tour_seen', '1') } catch (_) {} }
+  const onInviteCoParent = async (email) => {
+    await addCoParentInvite(email, familyId)
+    flash('✉️ Co-parent invited — they sign in with that email')
+  }
   // Add a custom activity to one or more boys (kid → claim, parent → auto-count).
   const onAddCustom = ({ title, min, pts, targets, byParent }) => {
     targets.forEach((pid) => actions.addCustom(pid, { title, min, pts, byParent }))
@@ -313,6 +322,8 @@ export default function App({ onSignOut } = {}) {
               onOpenSports={hasActiveFamily() ? () => setShowSports(true) : undefined}
               onOpenRewards={hasActiveFamily() ? () => setShowRewards(true) : undefined}
               onOpenTour={() => setShowTour(true)}
+              onOpenCoParent={familyId ? () => setShowCoParent(true) : undefined}
+              onOpenAdmin={isAdmin(currentUser) ? () => setShowAdmin(true) : undefined}
             />
           )}
 
@@ -490,6 +501,12 @@ export default function App({ onSignOut } = {}) {
       )}
 
       {showTour && <Walkthrough onClose={closeTour} />}
+
+      {showCoParent && (
+        <CoParentSheet onInvite={onInviteCoParent} onClose={() => setShowCoParent(false)} />
+      )}
+
+      {showAdmin && <InviteAdmin onClose={() => setShowAdmin(false)} />}
 
       <div className={`toast${toast.show ? ' show' : ''}`} dangerouslySetInnerHTML={{ __html: toast.msg }} />
     </div>
