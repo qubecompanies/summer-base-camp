@@ -2,7 +2,7 @@
 // Strategy: network-first for navigation (so deploys land fast + Firebase data
 // stays live), cache-first for static assets, with a cached shell fallback when
 // offline. Bump CACHE on each release so old assets are evicted.
-const CACHE = 'sbc-v2'
+const CACHE = 'sbc-v3'
 const SHELL = ['/', '/index.html', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest']
 
 self.addEventListener('install', (e) => {
