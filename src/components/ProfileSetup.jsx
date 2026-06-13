@@ -23,21 +23,28 @@ export default function ProfileSetup({ onBind, pins }) {
   }
 
   if (!picked) {
+    const kids = profiles.filter((p) => p.role !== 'parent')
+    const parent = profiles.find((p) => p.role === 'parent')
     return (
       <div className="center-screen">
         <div className="card setup">
           <div className="badge-sun" style={{ margin: '0 auto' }}>☀</div>
-          <h2>Whose device is this?</h2>
-          <p>Pick a profile to set up this device. You can switch later.</p>
+          <h2>Who uses this device?</h2>
+          <p>Pick the kid who uses this phone or tablet — they’ll just enter their PIN to get on their board. (Signing in is separate from this.)</p>
           <div className="profilepicks">
-            {profiles.map((p) => (
+            {kids.map((p) => (
               <button key={p.id} className={`profilepick ${p.id}`} onClick={() => setPicked(p.id)}>
                 <span className="ppav">{p.avatar}</span>
                 <span className="ppname">{p.name}</span>
-                <span className="pprole">{p.role === 'parent' ? 'sign-off + setup' : 'claim · prove · earn'}</span>
+                <span className="pprole">claim · prove · earn</span>
               </button>
             ))}
           </div>
+          {parent && (
+            <button className="parentdevicebtn" onClick={() => setPicked(parent.id)}>
+              👤 This is a parent’s own device
+            </button>
+          )}
         </div>
       </div>
     )

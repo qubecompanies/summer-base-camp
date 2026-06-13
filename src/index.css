@@ -406,6 +406,8 @@ body{
 .profilepick .ppav{font-size:26px;line-height:1;}
 .profilepick .ppname{font-weight:800;font-size:15px;font-family:'Bricolage Grotesque';color:var(--ink);}
 .profilepick .pprole{display:block;font-size:11px;color:var(--ink-soft);font-weight:500;}
+.parentdevicebtn{margin-top:14px;width:100%;background:none;border:1.5px dashed var(--line);border-radius:12px;padding:10px;font-family:'Outfit';font-weight:600;font-size:12.5px;color:var(--ink-soft);cursor:pointer;}
+.parentdevicebtn:hover{border-color:var(--purple);color:var(--purple);}
 .pininput{width:140px;text-align:center;letter-spacing:10px;font-size:24px;font-family:'Bricolage Grotesque';font-weight:800;border:1.5px solid var(--line);border-radius:12px;background:#fff;padding:10px;margin:0 auto 14px;display:block;}
 
 /* Sports + drill sheet */
