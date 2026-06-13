@@ -6,7 +6,14 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  // Use the HOSTING domain (same origin as the app) for the OAuth handler, not
+  // the default *.firebaseapp.com. Cross-origin auth handlers lose the session
+  // on mobile/PWA due to browser storage isolation → sign-in loops back to the
+  // login screen. Override is safe: web.app is an authorized domain by default.
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN
+    || (import.meta.env.VITE_FIREBASE_PROJECT_ID
+      ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.web.app`
+      : import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,

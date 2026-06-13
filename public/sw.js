@@ -2,7 +2,7 @@
 // Strategy: network-first for navigation (so deploys land fast + Firebase data
 // stays live), cache-first for static assets, with a cached shell fallback when
 // offline. Bump CACHE on each release so old assets are evicted.
-const CACHE = 'sbc-v1'
+const CACHE = 'sbc-v2'
 const SHELL = ['/', '/index.html', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest']
 
 self.addEventListener('install', (e) => {
@@ -22,6 +22,9 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(request.url)
   // Never intercept Firebase / Google API traffic — let it hit the network.
   if (url.origin !== self.location.origin) return
+  // Never intercept Firebase's reserved auth handler (/__/auth/...). It must be
+  // served first-party for popup/redirect sign-in to work.
+  if (url.pathname.startsWith('/__/')) return
 
   // Navigations: try network, fall back to cached shell when offline.
   if (request.mode === 'navigate') {

@@ -24,15 +24,6 @@ const MESSAGES = {
 export const authMessage = (e) =>
   (e && (MESSAGES[e.code] || e.message)) || 'Something went wrong. Please try again.'
 
-// Mobile / installed-PWA browsers handle OAuth popups poorly; use a redirect there.
-function preferRedirect() {
-  if (typeof window === 'undefined') return false
-  const standalone =
-    window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone
-  const small = window.matchMedia?.('(max-width: 820px)')?.matches
-  return Boolean(standalone || small)
-}
-
 // Auth state + sign-in methods for the multi-tenant flow. Does not touch the
 // legacy anonymous path — only used when MULTI_TENANT is on.
 export function useAuth() {
@@ -56,13 +47,19 @@ export function useAuth() {
   }, [])
 
   const google = useCallback(() => run(async () => {
-    if (preferRedirect()) return signInWithRedirect(auth, googleProvider)
+    // Popup first — it returns the result via postMessage to the same page, so
+    // it survives mobile browser storage isolation (unlike redirect, which can
+    // loop back to login). Fall back to redirect only when a popup can't open.
     try {
       return await signInWithPopup(auth, googleProvider)
     } catch (e) {
-      // Fall back to redirect if the popup is blocked.
-      if (e?.code === 'auth/popup-blocked') return signInWithRedirect(auth, googleProvider)
-      throw e
+      const code = e?.code || ''
+      if (code === 'auth/popup-blocked'
+        || code === 'auth/operation-not-supported-in-this-environment'
+        || code === 'auth/web-storage-unsupported') {
+        return signInWithRedirect(auth, googleProvider)
+      }
+      throw e // popup-closed-by-user / cancelled → surface, don't loop
     }
   }), [run])
 
